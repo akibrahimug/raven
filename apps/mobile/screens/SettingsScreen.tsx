@@ -13,6 +13,7 @@ import { colors, friendlyError, levelForPoints, nextLevel, type Profile } from "
 import { supabase } from "../lib/supabase";
 import { uploadPhotoBase64 } from "../lib/media";
 import { getHapticsEnabled, setHapticsEnabled } from "../lib/prefs";
+import { unregisterPushToken } from "../lib/push";
 import { Avatar } from "../components/Avatar";
 import { displayText } from "../components/ui";
 
@@ -133,7 +134,13 @@ export function SettingsScreen({
         />
       </View>
 
-      <Pressable onPress={() => supabase.auth.signOut()} style={styles.signOut}>
+      <Pressable
+        onPress={async () => {
+          await unregisterPushToken(); // this device stops buzzing for this account
+          supabase.auth.signOut();
+        }}
+        style={styles.signOut}
+      >
         <Text style={styles.signOutLabel}>Sign out</Text>
       </Pressable>
     </ScrollView>

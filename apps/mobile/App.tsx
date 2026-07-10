@@ -7,6 +7,7 @@ import { colors, type Profile } from "@raven/shared";
 import { supabase } from "./lib/supabase";
 import { fetchFriends, fetchProfile } from "./lib/data";
 import { buzzArrival, loadPrefs } from "./lib/prefs";
+import { onNotificationTap, registerPushToken } from "./lib/push";
 import { Plane, displayText } from "./components/ui";
 import { Avatar } from "./components/Avatar";
 import { LoginScreen } from "./screens/LoginScreen";
@@ -65,6 +66,17 @@ function Root() {
       .then((friends) => setFriendCount(friends.length))
       .catch(() => {});
   }, [userId, refreshKey]);
+
+  // Ask for push permission only once someone is signed in with a profile —
+  // never on the login screen.
+  const profileId = profile?.id ?? null;
+  useEffect(() => {
+    if (!userId || !profileId) return;
+    registerPushToken();
+  }, [userId, profileId]);
+
+  // Tapping a push (including the one that cold-started the app) opens its raven.
+  useEffect(() => onNotificationTap((id) => setRoute({ name: "raven", id })), []);
 
   // Realtime: RLS decides what this user hears about; we just refetch.
   useEffect(() => {
