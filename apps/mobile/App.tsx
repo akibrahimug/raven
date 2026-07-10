@@ -1,0 +1,224 @@
+import { useEffect, useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import type { Session } from "@supabase/supabase-js";
+import { colors, type Profile } from "@raven/shared";
+import { supabase } from "./lib/supabase";
+import { fetchFriends, fetchProfile } from "./lib/data";
+import { buzzArrival, loadPrefs } from "./lib/prefs";
+import { Plane, displayText } from "./components/ui";
+import { Avatar } from "./components/Avatar";
+import { LoginScreen } from "./screens/LoginScreen";
+import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { InboxScreen } from "./screens/InboxScreen";
+import { ComposeScreen } from "./screens/ComposeScreen";
+import { RavenScreen } from "./screens/RavenScreen";
+import { FriendsScreen } from "./screens/FriendsScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
+
+type Route =
+  | { name: "inbox" }
+  | { name: "past" }
+  | { name: "compose" }
+  | { name: "raven"; id: string }
+  | { name: "friends" }
+  | { name: "settings" };
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <Root />
+    </SafeAreaProvider>
+  );
+}
+
+function Root() {
+  const insets = useSafeAreaInsets();
+  const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [friendCount, setFriendCount] = useState(0);
+  const [route, setRoute] = useState<Route>({ name: "inbox" });
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    loadPrefs();
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+      if (!next) {
+        setProfile(null);
+        setRoute({ name: "inbox" });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const userId = session?.user.id ?? null;
+
+  useEffect(() => {
+    if (!userId) return;
+    fetchProfile(userId).then(setProfile).catch(() => {});
+    fetchFriends(userId)
+      .then((friends) => setFriendCount(friends.length))
+      .catch(() => {});
+  }, [userId, refreshKey]);
+
+  // Realtime: RLS decides what this user hears about; we just refetch.
+  useEffect(() => {
+    if (!userId) return;
+    const bump = () => setRefreshKey((k) => k + 1);
+    const channel = supabase
+      .channel("raven-mobile")
+      .on("postgres_changes", { event: "*", schema: "public", table: "ravens" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "raven_recipients" }, (payload) => {
+        const row = payload.new as { recipient_id?: string } | null;
+        if (payload.eventType === "INSERT" && row?.recipient_id === userId) {
+          buzzArrival(); // a raven just landed for this user
+        }
+        bump();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "raven_replies" }, bump)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId]);
+
+  if (session === undefined) {
+    // Cold start: a plain branded frame, no spinners — keeps launch feeling instant.
+    return <View style={styles.boot} />;
+  }
+
+  let screen: React.ReactNode;
+  if (!session || !userId) {
+    screen = <LoginScreen />;
+  } else if (!profile) {
+    screen = (
+      <OnboardingScreen userId={userId} onDone={() => setRefreshKey((k) => k + 1)} />
+    );
+  } else if (route.name === "compose") {
+    screen = (
+      <ComposeScreen
+        userId={userId}
+        friendCount={friendCount}
+        onSent={() => {
+          setRoute({ name: "inbox" });
+          setRefreshKey((k) => k + 1);
+        }}
+        onCancel={() => setRoute({ name: "inbox" })}
+      />
+    );
+  } else if (route.name === "raven") {
+    screen = (
+      <RavenScreen
+        ravenId={route.id}
+        userId={userId}
+        refreshKey={refreshKey}
+        onBack={() => setRoute({ name: "inbox" })}
+      />
+    );
+  } else if (route.name === "friends") {
+    screen = (
+      <FriendsScreen
+        userId={userId}
+        inviteCode={profile.invite_code}
+        onBack={() => setRoute({ name: "inbox" })}
+      />
+    );
+  } else if (route.name === "settings") {
+    screen = (
+      <SettingsScreen
+        profile={profile}
+        onBack={() => setRoute({ name: "inbox" })}
+        onProfileChanged={() => setRefreshKey((k) => k + 1)}
+      />
+    );
+  } else {
+    const past = route.name === "past";
+    screen = (
+      <View style={styles.flex}>
+        <View style={styles.header}>
+          <View style={styles.brand}>
+            <Plane size={24} />
+            <Text style={[displayText, styles.wordmark]}>{past ? "Past ravens" : "Raven"}</Text>
+          </View>
+          <View style={styles.nav}>
+            <Pressable onPress={() => setRoute(past ? { name: "inbox" } : { name: "past" })} hitSlop={8}>
+              <Text style={styles.navLink}>{past ? "Now" : "Past"}</Text>
+            </Pressable>
+            <Pressable onPress={() => setRoute({ name: "friends" })} hitSlop={8}>
+              <Text style={styles.navLink}>Friends</Text>
+            </Pressable>
+            <Pressable onPress={() => setRoute({ name: "settings" })} hitSlop={8}>
+              <Avatar profile={profile} size={32} />
+            </Pressable>
+          </View>
+        </View>
+        <InboxScreen
+          userId={userId}
+          past={past}
+          refreshKey={refreshKey}
+          onOpen={(id) => setRoute({ name: "raven", id })}
+        />
+        <Pressable
+          onPress={() => setRoute({ name: "compose" })}
+          style={({ pressed }) => [
+            styles.fab,
+            { bottom: insets.bottom + 20 },
+            pressed && { backgroundColor: colors.accentDeep },
+          ]}
+        >
+          <Plane size={20} color="#fff" />
+          <Text style={styles.fabLabel}>Send a Raven</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.app, { paddingTop: insets.top }]}>
+      {screen}
+      <StatusBar style="dark" />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  app: {
+    flex: 1,
+    backgroundColor: colors.paper,
+  },
+  boot: { flex: 1, backgroundColor: colors.paper },
+  flex: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  wordmark: { fontSize: 20 },
+  nav: { flexDirection: "row", alignItems: "center", gap: 16 },
+  navLink: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
+  fab: {
+    position: "absolute",
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.accent,
+    borderRadius: 999,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  fabLabel: { color: "#fff", fontSize: 15, fontWeight: "700" },
+});

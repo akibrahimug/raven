@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Raven",
+    "slug": "raven",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "raven",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "app.raven.mobile"
+    },
+    "android": {
+      "package": "app.raven.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#FAF8F4",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

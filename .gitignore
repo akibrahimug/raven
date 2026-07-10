@@ -1,0 +1,18 @@
+node_modules/
+.next/
+.turbo/
+.expo/
+dist/
+build/
+*.tsbuildinfo
+
+# env — real keys never committed
+.env
+.env.local
+.env*.local
+
+# supabase local dev artifacts
+supabase/.branches
+supabase/.temp
+
+.DS_Store
