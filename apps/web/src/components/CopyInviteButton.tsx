@@ -24,7 +24,7 @@ export function CopyInviteButton({ url, senderName }: { url: string; senderName:
     <button
       type="button"
       onClick={share}
-      className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-deep"
+      className="rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]"
       aria-label={`Share ${senderName}'s invite link`}
     >
       {copied ? "Copied" : "Share invite link"}

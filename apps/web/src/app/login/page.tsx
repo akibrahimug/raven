@@ -6,6 +6,7 @@ import { friendlyError } from "@raven/shared";
 import { createClient } from "@/lib/supabase/client";
 import { normalisePhone } from "@/lib/format";
 import { RavenMark } from "@/components/RavenMark";
+import { SpinnerIcon } from "@/components/icons";
 
 function LoginForm() {
   const router = useRouter();
@@ -77,9 +78,10 @@ function LoginForm() {
           <button
             type="submit"
             disabled={busy || phone.trim().length < 10}
-            className="mt-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-accent-deep disabled:opacity-40"
+            className="mt-2 flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-60"
           >
-            Text me a code
+            {busy ? <SpinnerIcon className="size-5 animate-spin" /> : null}
+            {busy ? "Texting…" : "Text me a code"}
           </button>
         </form>
       ) : (
@@ -100,9 +102,10 @@ function LoginForm() {
           <button
             type="submit"
             disabled={busy || code.trim().length < 6}
-            className="mt-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-accent-deep disabled:opacity-40"
+            className="mt-2 flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-60"
           >
-            Sign in
+            {busy ? <SpinnerIcon className="size-5 animate-spin" /> : null}
+            {busy ? "Signing in…" : "Sign in"}
           </button>
           <button
             type="button"

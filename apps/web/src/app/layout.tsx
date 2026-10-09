@@ -21,9 +21,13 @@ export const viewport: Viewport = {
   themeColor: "#FFFBF5",
 };
 
+// suppressHydrationWarning on <html>: browser extensions (scroll-lock/theme
+// ones in particular) commonly inject a style attribute there before React
+// hydrates — this app sets nothing on <html> itself. Scoped to this one
+// element; a real mismatch anywhere else in the tree still surfaces normally.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${bricolage.variable} ${dmSans.variable}`}>
+    <html lang="en" className={`${bricolage.variable} ${dmSans.variable}`} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

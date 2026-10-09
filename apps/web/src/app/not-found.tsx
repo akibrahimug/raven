@@ -10,7 +10,7 @@ export default function NotFound() {
         action={
           <Link
             href="/"
-            className="mt-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-accent-deep"
+            className="mt-2 rounded-full bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]"
           >
             Back to your inbox
           </Link>

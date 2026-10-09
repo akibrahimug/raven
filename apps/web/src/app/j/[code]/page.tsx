@@ -56,7 +56,7 @@ export default async function InvitePage({
         <form action={acceptWithCode} className="mt-10">
           <button
             type="submit"
-            className="rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-accent-deep"
+            className="rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]"
           >
             Add {inviter.display_name}
           </button>
@@ -64,7 +64,7 @@ export default async function InvitePage({
       ) : (
         <Link
           href={`/login?next=${encodeURIComponent(`/j/${code}`)}`}
-          className="mt-10 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition-colors hover:bg-accent-deep"
+          className="mt-10 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]"
         >
           Sign in to accept
         </Link>

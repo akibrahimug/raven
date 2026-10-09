@@ -31,7 +31,7 @@ export default async function OnboardingPage({
         />
         <button
           type="submit"
-          className="mt-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition-colors hover:bg-accent-deep"
+          className="mt-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]"
         >
           Done
         </button>

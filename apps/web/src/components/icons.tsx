@@ -17,6 +17,22 @@ export function PhotoIcon({ className }: { className?: string }) {
   );
 }
 
+/** Caller applies `animate-spin`; kept separate so a button can swap a
+ *  static icon for this one without fighting Tailwind's class merge order. */
+export function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2" opacity="0.25" />
+      <path
+        d="M21 12a9 9 0 0 0-9-9"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function XIcon({ className }: { className?: string }) {
   return (
     <svg

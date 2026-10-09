@@ -12,7 +12,7 @@ export function SendFab() {
   return (
     <Link
       href="/compose"
-      className="fixed bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-accent py-3.5 pl-5 pr-6 text-base font-semibold text-white shadow-[0_8px_24px_rgba(255,92,57,0.30)] transition-colors hover:bg-accent-deep"
+      className="fixed bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-accent py-3.5 pl-5 pr-6 text-base font-semibold text-white shadow-[0_8px_24px_rgba(255,92,57,0.30)] transition hover:bg-accent-deep active:scale-[0.97]"
     >
       <RavenMark className="size-5 text-white" />
       Send a Raven

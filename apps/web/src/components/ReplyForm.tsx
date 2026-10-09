@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { friendlyError } from "@raven/shared";
 import { sendReply } from "@/lib/actions";
 import { uploadMedia } from "@/lib/storage";
-import { PhotoIcon, XIcon } from "@/components/icons";
+import { PhotoIcon, SpinnerIcon, XIcon } from "@/components/icons";
 
 export function ReplyForm({ ravenId }: { ravenId: string }) {
   const [body, setBody] = useState("");
@@ -84,9 +84,9 @@ export function ReplyForm({ ravenId }: { ravenId: string }) {
         <button
           type="submit"
           disabled={(!body.trim() && !photo) || pending}
-          className="rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-deep disabled:opacity-40"
+          className="rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-40"
         >
-          {pending ? "…" : "Send"}
+          {pending ? <SpinnerIcon className="size-4 animate-spin" /> : "Send"}
         </button>
       </div>
       {error ? <p className="text-xs text-late-amber">{error}</p> : null}
