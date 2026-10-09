@@ -1,6 +1,19 @@
 // Sends Expo push notifications for raven events.
-// Invoked by database triggers via pg_net (see 20260710000006_push.sql);
-// authenticated by the x-push-secret header, so deploy with --no-verify-jwt.
+//
+// NOT CURRENTLY DEPLOYED: the self-hosted stack's trimmed shape (Oracle
+// E2.1.Micro) has no Edge Functions container, so as of
+// 20261009000008_push_direct_expo.sql the triggers call Expo directly via
+// pg_net instead of this function — see that migration for why and what
+// changed. Kept here, unmodified, as the richer alternative for a bigger
+// box: this version reads Expo's response and prunes dead tokens, which the
+// direct-pg_net path can't do (pg_net is fire-and-forget; nothing reads the
+// response back). To revive it: deploy with --no-verify-jwt, set the
+// push_fn_url/push_fn_secret Vault secrets and PUSH_SECRET function secret,
+// and move the trigger functions back to calling notify_push() (restore
+// from 20260710000006_push.sql) instead of send_expo_push().
+//
+// Invoked by database triggers via pg_net when deployed; authenticated by
+// the x-push-secret header.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 type PushEvent =
