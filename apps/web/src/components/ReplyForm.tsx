@@ -4,9 +4,28 @@ import { useRef, useState, useTransition } from "react";
 import { friendlyError } from "@raven/shared";
 import { sendReply } from "@/lib/actions";
 import { uploadMedia } from "@/lib/storage";
-import { PhotoIcon, SpinnerIcon, XIcon } from "@/components/icons";
+import type { ReplyRow } from "@/lib/data";
+import { PhotoIcon, XIcon } from "@/components/icons";
 
-export function ReplyForm({ ravenId }: { ravenId: string }) {
+export function ReplyForm({
+  ravenId,
+  viewerId,
+  onOptimistic,
+  onReconcile,
+  onFailed,
+}: {
+  ravenId: string;
+  viewerId: string;
+  /** Called synchronously on submit, before any network call — this is what
+   *  makes a reply "appear instantly": the bubble renders before the server
+   *  has even been asked, not just an unlocked send button. */
+  onOptimistic: (reply: ReplyRow) => void;
+  /** Swaps the optimistic bubble for the real row once the insert succeeds. */
+  onReconcile: (tempId: string, real: ReplyRow) => void;
+  /** Removes the optimistic bubble on failure — the error message covers
+   *  telling the user, this just undoes the premature "it sent" signal. */
+  onFailed: (tempId: string) => void;
+}) {
   const [body, setBody] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -24,19 +43,46 @@ export function ReplyForm({ ravenId }: { ravenId: string }) {
     event.preventDefault();
     const trimmed = body.trim();
     if ((!trimmed && !photo) || pending) return;
+
+    const tempId = `pending-${crypto.randomUUID()}`;
+    // The local blob preview doubles as the optimistic bubble's image — no
+    // need to wait for the real upload to show *something* in the thread.
+    const optimisticMediaUrl = preview;
+    const optimistic: ReplyRow = {
+      id: tempId,
+      raven_id: ravenId,
+      author_id: viewerId,
+      body: trimmed,
+      media_url: optimisticMediaUrl,
+      created_at: new Date().toISOString(),
+      author: null, // "mine" bubbles never render the author label anyway
+    };
+    onOptimistic(optimistic);
+
+    // Clear immediately — the bubble is already showing the content, so
+    // holding the input hostage until the network call resolves would be a
+    // regression back to "did my click do anything."
+    setBody("");
+    pickPhoto(null);
+    setError(null);
+
     startTransition(async () => {
       try {
         const mediaUrl = photo ? await uploadMedia(photo) : null;
         const result = await sendReply(ravenId, trimmed, mediaUrl);
-        if (result?.error) {
-          setError(result.error);
+        if (result?.error || !result?.reply) {
+          onFailed(tempId);
+          setError(result?.error ?? "Could not send.");
+          setBody(trimmed);
           return;
         }
-        setBody("");
-        pickPhoto(null);
-        setError(null);
+        onReconcile(tempId, result.reply as ReplyRow);
       } catch (uploadError) {
+        onFailed(tempId);
         setError(friendlyError(uploadError));
+        setBody(trimmed);
+      } finally {
+        if (optimisticMediaUrl) URL.revokeObjectURL(optimisticMediaUrl);
       }
     });
   }
@@ -83,10 +129,10 @@ export function ReplyForm({ ravenId }: { ravenId: string }) {
         />
         <button
           type="submit"
-          disabled={(!body.trim() && !photo) || pending}
+          disabled={!body.trim() && !photo}
           className="rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-40"
         >
-          {pending ? <SpinnerIcon className="size-4 animate-spin" /> : "Send"}
+          Send
         </button>
       </div>
       {error ? <p className="text-xs text-late-amber">{error}</p> : null}

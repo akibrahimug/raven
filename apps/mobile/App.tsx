@@ -79,6 +79,10 @@ function Root() {
   useEffect(() => onNotificationTap((id) => setRoute({ name: "raven", id })), []);
 
   // Realtime: RLS decides what this user hears about; we just refetch.
+  // raven_replies is deliberately absent here — RavenScreen patches new
+  // replies into its own state directly from a subscription scoped to the
+  // raven it's actually showing, so a chat message never waits on this
+  // bump-and-refetch round-trip.
   useEffect(() => {
     if (!userId) return;
     const bump = () => setRefreshKey((k) => k + 1);
@@ -92,7 +96,6 @@ function Root() {
         }
         bump();
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "raven_replies" }, bump)
       .subscribe();
     return () => {
       supabase.removeChannel(channel);

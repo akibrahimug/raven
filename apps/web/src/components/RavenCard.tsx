@@ -3,6 +3,7 @@ import type { InboxRaven } from "@/lib/data";
 import { lifeElapsed, timeLeft } from "@/lib/format";
 import { RsvpButtons } from "@/components/RsvpButtons";
 import { Avatar } from "@/components/Avatar";
+import { LocationIcon } from "@/components/icons";
 
 function attendingLine(raven: InboxRaven, viewerId: string): string | null {
   const attending = raven.recipients.filter(
@@ -50,6 +51,15 @@ export function RavenCard({ raven, viewerId }: { raven: InboxRaven; viewerId: st
           <span className="text-ink-faint">{timeLeft(raven.expires_at)}</span>
         </p>
         <p className="invitation mt-2 text-[1.35rem] text-ink">{raven.body}</p>
+        {raven.location ? (
+          // Plain text here, not a link: the card is already one big link to
+          // /r/[id], and a nested <a> inside it is invalid HTML — the actual
+          // tap-out to Maps lives on the detail page instead.
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
+            <LocationIcon className="size-4" />
+            {raven.location}
+          </p>
+        ) : null}
         {raven.media_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

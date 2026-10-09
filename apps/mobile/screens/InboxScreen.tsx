@@ -12,7 +12,7 @@ import { colors, lifeElapsed, timeLeft, type RsvpStatus } from "@raven/shared";
 import { fetchInbox, rsvp, type InboxRaven } from "../lib/data";
 import { buzzTap } from "../lib/prefs";
 import { Avatar } from "../components/Avatar";
-import { Plane, displayText } from "../components/ui";
+import { LocationPin, Plane, displayText } from "../components/ui";
 
 function attendingLine(raven: InboxRaven, viewerId: string): string | null {
   const attending = raven.recipients.filter(
@@ -82,6 +82,12 @@ function RavenCard({
         <Text style={styles.timeLeft}>{timeLeft(raven.expires_at)}</Text>
       </View>
       <Text style={[displayText, styles.body]}>{raven.body}</Text>
+      {raven.location ? (
+        <View style={styles.locationRow}>
+          <LocationPin size={14} color={colors.inkSoft} />
+          <Text style={styles.locationText}>{raven.location}</Text>
+        </View>
+      ) : null}
       {raven.media_url ? (
         <Image source={{ uri: raven.media_url }} style={styles.media} resizeMode="cover" />
       ) : null}
@@ -241,6 +247,8 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 0.8, color: colors.inkSoft },
   timeLeft: { fontSize: 12, color: colors.inkFaint },
   body: { fontSize: 21, lineHeight: 27, marginTop: 8 },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+  locationText: { fontSize: 13, fontWeight: "600", color: colors.inkSoft },
   media: { marginTop: 12, width: "100%", height: 190, borderRadius: 14 },
   whosIn: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10 },
   avatarStack: { flexDirection: "row" },

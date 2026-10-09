@@ -34,6 +34,7 @@ export interface Raven {
   sender_id: string;
   body: string;
   media_url: string | null;
+  location: string | null;
   expires_at: string;
   created_at: string;
 }
@@ -92,6 +93,26 @@ export function expiryFromPreset(preset: ExpiryPreset, now: Date = new Date()): 
     end.setDate(end.getDate() + daysUntilSunday);
   }
   return end;
+}
+
+/** "Custom" isn't one of EXPIRY_PRESETS — it's a UI-only concept the sender
+ *  picks instead of a preset, feeding this function with their own hours
+ *  rather than expiryFromPreset. Bounds match the presets' own range: never
+ *  shorter than the UI can usefully distinguish from "1 hour", never longer
+ *  than "This week" already goes. */
+export const CUSTOM_EXPIRY_HOURS_MIN = 0.5;
+export const CUSTOM_EXPIRY_HOURS_MAX = 168;
+
+export function expiryFromCustomHours(hours: number, now: Date = new Date()): Date {
+  const clamped = Math.min(Math.max(hours, CUSTOM_EXPIRY_HOURS_MIN), CUSTOM_EXPIRY_HOURS_MAX);
+  return new Date(now.getTime() + clamped * 60 * 60 * 1000);
+}
+
+/** Builds a Maps search-query URL from a free-text location label — no
+ *  geocoding, no API key: the label itself is the query, resolved by
+ *  whichever maps app/site opens it. */
+export function locationMapsUrl(location: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`;
 }
 
 export const RSVP_OPTIONS: Array<{ status: Exclude<RsvpStatus, "pending">; label: string; emoji: string }> = [

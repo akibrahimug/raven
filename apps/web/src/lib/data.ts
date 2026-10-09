@@ -14,8 +14,13 @@ export type InboxRaven = Raven & {
   recipients: Array<RavenRecipient & { profile: Profile | null }>;
 };
 
+/** Shared with the client-side reply thread, which needs this exact shape
+ *  for both the server-fetched initial replies and the ones it patches in
+ *  itself (optimistic sends, realtime-delivered rows from other people). */
+export type ReplyRow = RavenReply & { author: Profile | null };
+
 export type RavenDetail = InboxRaven & {
-  replies: Array<RavenReply & { author: Profile | null }>;
+  replies: ReplyRow[];
 };
 
 /** Everything visible and unexpired, newest first. RLS does the privacy work:

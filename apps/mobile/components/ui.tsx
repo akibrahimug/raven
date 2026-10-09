@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
-import Svg, { Polygon } from "react-native-svg";
+import Svg, { Circle, Path, Polygon } from "react-native-svg";
 import { colors } from "@raven/shared";
 
 /** The raven — same classic paper plane as the web app. */
@@ -9,6 +9,24 @@ export function Plane({ size = 24, color = colors.accent }: { size?: number; col
       <Polygon points="45,4 3,25 19,31" fill={color} opacity={0.9} />
       <Polygon points="45,4 19,31 28,44" fill={color} />
       <Polygon points="19,31 19,41 25,36" fill={color} opacity={0.45} />
+    </Svg>
+  );
+}
+
+/** Matches apps/web/src/components/icons.tsx LocationIcon exactly — same
+ *  mark on both platforms, no emoji (the app's rendered UI avoids them
+ *  entirely; RSVP_OPTIONS.emoji in @raven/shared is legacy and unused here). */
+export function LocationPin({ size = 16, color = colors.inkSoft }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21Z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Circle cx={12} cy={9.5} r={2.4} stroke={color} strokeWidth={1.8} />
     </Svg>
   );
 }

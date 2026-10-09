@@ -33,10 +33,12 @@ export async function sendRaven(input: {
   body: string;
   expiresAt: string;
   mediaUrl?: string | null;
+  location?: string | null;
 }) {
   const { supabase, user } = await requireUser();
   const body = input.body.trim();
   if (!body) return { error: "A raven needs a message." };
+  const location = input.location?.trim() || null;
 
   // Every raven flies to all your friends — they decide whether to come.
   const { data: friendships, error: friendsError } = await supabase
@@ -57,6 +59,7 @@ export async function sendRaven(input: {
       body,
       expires_at: input.expiresAt,
       media_url: input.mediaUrl ?? null,
+      location,
     })
     .select("id")
     .single();
@@ -93,12 +96,19 @@ export async function sendReply(ravenId: string, body: string, mediaUrl?: string
   const { supabase, user } = await requireUser();
   const trimmed = body.trim();
   if (!trimmed && !mediaUrl) return {};
-  const { error } = await supabase
+  // Returns the inserted row: the reply thread already rendered an optimistic
+  // version of it on click, and needs the real id/created_at to reconcile —
+  // without this, the optimistic entry never resolves to the row the
+  // realtime subscription will later recognize as "already shown".
+  const { data, error } = await supabase
     .from("raven_replies")
-    .insert({ raven_id: ravenId, author_id: user.id, body: trimmed, media_url: mediaUrl ?? null });
+    .insert({ raven_id: ravenId, author_id: user.id, body: trimmed, media_url: mediaUrl ?? null })
+    .select()
+    .single();
   if (error) return { error: friendlyError(error) };
-  revalidatePath(`/r/${ravenId}`);
-  return {};
+  // No revalidatePath: the reply thread patches itself from this return
+  // value and from its own scoped realtime subscription, not a server refetch.
+  return { reply: data };
 }
 
 export async function recallRaven(ravenId: string) {

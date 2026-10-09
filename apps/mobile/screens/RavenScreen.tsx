@@ -5,6 +5,7 @@ import {
   Image,
   Keyboard,
   LayoutAnimation,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -15,13 +16,14 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { colors, timeAgo, timeLeft, type RsvpStatus } from "@raven/shared";
+import { colors, locationMapsUrl, timeAgo, timeLeft, type Profile, type RsvpStatus } from "@raven/shared";
 import * as ImagePicker from "expo-image-picker";
-import { fetchRaven, rsvp, sendReply, type RavenDetail } from "../lib/data";
+import { fetchRaven, rsvp, sendReply, type RavenDetail, type ReplyRow } from "../lib/data";
+import { supabase } from "../lib/supabase";
 import { uploadPhotoBase64 } from "../lib/media";
 import { buzzTap } from "../lib/prefs";
 import { Avatar } from "../components/Avatar";
-import { displayText } from "../components/ui";
+import { displayText, LocationPin } from "../components/ui";
 
 const RSVP_PILLS: Array<{ status: Exclude<RsvpStatus, "pending">; label: string; color: string }> = [
   { status: "in", label: "I'm in", color: colors.in },
@@ -48,8 +50,16 @@ export function RavenScreen({
   const [reply, setReply] = useState("");
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Ids already rendered (including optimistic "pending-…" ones), so the
+  // realtime echo of the viewer's own insert never produces a second bubble.
+  const knownReplyIds = useRef<Set<string>>(new Set());
+  // Every profile who could plausibly author a reply here (sender +
+  // recipients) — a realtime payload carries only raw columns, no joined
+  // author row, so this is how an incoming message gets a display name
+  // without a second network call.
+  const participantsRef = useRef<Record<string, Profile | null>>({});
 
   // The who's-in list owns the screen by default. The chat only takes over
   // when its input is activated, sliding up like a sheet over everything else.
@@ -108,7 +118,16 @@ export function RavenScreen({
 
   const load = useCallback(async () => {
     try {
-      setRaven(await fetchRaven(ravenId));
+      const detail = await fetchRaven(ravenId);
+      setRaven(detail);
+      if (detail) {
+        knownReplyIds.current = new Set(detail.replies.map((r) => r.id));
+        const participants: Record<string, Profile | null> = { [detail.sender_id]: detail.sender };
+        for (const r of detail.recipients) {
+          if (r.profile) participants[r.profile.id] = r.profile;
+        }
+        participantsRef.current = participants;
+      }
     } catch {
       // transient — realtime or the next action retries
     }
@@ -117,6 +136,29 @@ export function RavenScreen({
   useEffect(() => {
     load();
   }, [load, refreshKey]);
+
+  // Chat replies patch themselves in directly — scoped to this one raven —
+  // rather than waiting on the app-level bump+refetch cycle in App.tsx,
+  // which no longer listens for raven_replies at all.
+  useEffect(() => {
+    const channel = supabase
+      .channel(`raven-replies-${ravenId}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "raven_replies", filter: `raven_id=eq.${ravenId}` },
+        (payload) => {
+          const row = payload.new as Omit<ReplyRow, "author">;
+          if (knownReplyIds.current.has(row.id)) return;
+          knownReplyIds.current.add(row.id);
+          const author = participantsRef.current[row.author_id] ?? null;
+          setRaven((prev) => (prev ? { ...prev, replies: [...prev.replies, { ...row, author }] } : prev));
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [ravenId]);
 
   if (!raven) {
     return (
@@ -160,21 +202,48 @@ export function RavenScreen({
   }
 
   async function submitReply() {
-    if ((!reply.trim() && !photoBase64) || busy) return;
+    const trimmed = reply.trim();
+    if (!trimmed && !photoBase64) return;
     buzzTap();
-    setBusy(true);
+
+    const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // The locally-picked file's own uri doubles as the optimistic bubble's
+    // image — no need to wait for the real upload to show *something*.
+    const optimistic: ReplyRow = {
+      id: tempId,
+      raven_id: ravenId,
+      author_id: userId,
+      body: trimmed,
+      media_url: photoUri,
+      created_at: new Date().toISOString(),
+      author: null, // "mine" bubbles never render the author label anyway
+    };
+    knownReplyIds.current.add(tempId);
+    setRaven((prev) => (prev ? { ...prev, replies: [...prev.replies, optimistic] } : prev));
+
+    // Clear immediately — the bubble already shows the content, so holding
+    // the input hostage until the network call resolves would be exactly
+    // the "did my click do anything" regression the rest of the app fixed.
+    setReply("");
+    setPhotoBase64(null);
+    setPhotoUri(null);
     setError(null);
+
     try {
       const mediaUrl = photoBase64 ? await uploadPhotoBase64(userId, photoBase64) : null;
-      await sendReply(ravenId, userId, reply, mediaUrl);
-      setReply("");
-      setPhotoBase64(null);
-      setPhotoUri(null);
-      await load();
+      const real = await sendReply(ravenId, userId, trimmed, mediaUrl);
+      knownReplyIds.current.delete(tempId);
+      knownReplyIds.current.add(real.id);
+      setRaven((prev) =>
+        prev ? { ...prev, replies: prev.replies.map((r) => (r.id === tempId ? real : r)) } : prev,
+      );
     } catch (e) {
+      knownReplyIds.current.delete(tempId);
+      setRaven((prev) =>
+        prev ? { ...prev, replies: prev.replies.filter((r) => r.id !== tempId) } : prev,
+      );
       setError(e instanceof Error ? e.message : "Could not send.");
-    } finally {
-      setBusy(false);
+      setReply(trimmed);
     }
   }
 
@@ -206,6 +275,16 @@ export function RavenScreen({
           </Text>
         </View>
         <Text style={[displayText, styles.body]}>{raven.body}</Text>
+        {raven.location ? (
+          <Pressable
+            onPress={() => Linking.openURL(locationMapsUrl(raven.location!))}
+            hitSlop={6}
+            style={styles.locationRow}
+          >
+            <LocationPin size={15} color={colors.inkSoft} />
+            <Text style={styles.locationText}>{raven.location}</Text>
+          </Pressable>
+        ) : null}
         {raven.media_url ? (
           <Image source={{ uri: raven.media_url }} style={styles.hero} resizeMode="cover" />
         ) : null}
@@ -366,10 +445,10 @@ export function RavenScreen({
                   />
                   <Pressable
                     onPress={submitReply}
-                    disabled={(!reply.trim() && !photoBase64) || busy}
-                    style={[styles.sendButton, ((!reply.trim() && !photoBase64) || busy) && { opacity: 0.4 }]}
+                    disabled={!reply.trim() && !photoBase64}
+                    style={[styles.sendButton, !reply.trim() && !photoBase64 && { opacity: 0.4 }]}
                   >
-                    <Text style={styles.sendLabel}>{busy ? "…" : "Send"}</Text>
+                    <Text style={styles.sendLabel}>Send</Text>
                   </Pressable>
                 </View>
               </View>
@@ -390,6 +469,8 @@ const styles = StyleSheet.create({
   eyebrow: { fontSize: 11, fontWeight: "600", letterSpacing: 0.8, color: colors.inkSoft },
   body: { fontSize: 26, lineHeight: 32 },
   hero: { width: "100%", height: 220, borderRadius: 18 },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start" },
+  locationText: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
   rsvpRow: { flexDirection: "row", gap: 8 },
   rsvpPill: {
     borderWidth: 1,

@@ -8,8 +8,14 @@ export type InboxRaven = Raven & {
   recipients: Array<RavenRecipient & { profile: Profile | null }>;
 };
 
+/** Shared with RavenScreen's live-patched reply state — see the web
+ *  equivalent (apps/web/src/lib/data.ts ReplyRow) for why this exact shape
+ *  matters: both the server-fetched initial replies and the ones patched in
+ *  later (optimistic sends, realtime rows) need to match it. */
+export type ReplyRow = RavenReply & { author: Profile | null };
+
 export type RavenDetail = InboxRaven & {
-  replies: Array<RavenReply & { author: Profile | null }>;
+  replies: ReplyRow[];
 };
 
 const INBOX_SELECT =
@@ -73,19 +79,28 @@ export async function rsvp(ravenId: string, userId: string, status: Exclude<Rsvp
   if (error) throw new Error(friendlyError(error));
 }
 
+/** Returns the inserted row: RavenScreen renders an optimistic version of it
+ *  on submit and needs the real id/created_at back to reconcile — without
+ *  this, the optimistic bubble never resolves into the row the realtime
+ *  subscription will later recognize as "already shown". */
 export async function sendReply(
   ravenId: string,
   userId: string,
   body: string,
   mediaUrl?: string | null,
-) {
-  const { error } = await supabase.from("raven_replies").insert({
-    raven_id: ravenId,
-    author_id: userId,
-    body: body.trim(),
-    media_url: mediaUrl ?? null,
-  });
-  if (error) throw new Error(friendlyError(error));
+): Promise<ReplyRow> {
+  const { data, error } = await supabase
+    .from("raven_replies")
+    .insert({
+      raven_id: ravenId,
+      author_id: userId,
+      body: body.trim(),
+      media_url: mediaUrl ?? null,
+    })
+    .select("*, author:profiles!author_id(*)")
+    .single();
+  if (error || !data) throw new Error(error ? friendlyError(error) : "Could not send.");
+  return data as unknown as ReplyRow;
 }
 
 /** Every raven flies to all friends — same rule as the web app. */
@@ -94,12 +109,19 @@ export async function sendRaven(
   body: string,
   expiresAt: string,
   mediaUrl?: string | null,
+  location?: string | null,
 ) {
   const friends = await fetchFriends(userId);
   if (friends.length === 0) throw new Error("No one to send to yet — add a friend first.");
   const { data: raven, error } = await supabase
     .from("ravens")
-    .insert({ sender_id: userId, body: body.trim(), expires_at: expiresAt, media_url: mediaUrl ?? null })
+    .insert({
+      sender_id: userId,
+      body: body.trim(),
+      expires_at: expiresAt,
+      media_url: mediaUrl ?? null,
+      location: location?.trim() || null,
+    })
     .select("id")
     .single();
   if (error || !raven) throw new Error(error ? friendlyError(error) : "Could not send.");

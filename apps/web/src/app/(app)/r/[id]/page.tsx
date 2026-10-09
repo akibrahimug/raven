@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Profile } from "@raven/shared";
+import { locationMapsUrl } from "@raven/shared";
 import { getRaven, getSessionProfile } from "@/lib/data";
 import { timeAgo, timeLeft } from "@/lib/format";
 import { RsvpButtons } from "@/components/RsvpButtons";
-import { ReplyForm } from "@/components/ReplyForm";
+import { ReplyThread } from "@/components/ReplyThread";
 import { RecallButton } from "@/components/RecallButton";
 import { AttendeeList } from "@/components/AttendeeList";
 import { Avatar } from "@/components/Avatar";
+import { LocationIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +27,14 @@ export default async function RavenPage({ params }: { params: Promise<{ id: stri
   const inThread = isSender || me?.status === "in" || me?.status === "late";
   const expired = new Date(raven.expires_at) <= new Date();
 
+  // Every profile a realtime-delivered reply could possibly be from, so
+  // ReplyThread can resolve an author's display name from the payload's raw
+  // author_id without a second network round-trip.
+  const participants: Record<string, Profile> = { [raven.sender.id]: raven.sender };
+  for (const r of raven.recipients) {
+    if (r.profile) participants[r.profile.id] = r.profile;
+  }
+
   return (
     <div className="pt-4">
       <Link href="/" className="text-sm font-medium text-ink-soft hover:text-ink">
@@ -39,6 +50,17 @@ export default async function RavenPage({ params }: { params: Promise<{ id: stri
           </span>
         </p>
         <h1 className="invitation mt-3 text-[1.75rem]">{raven.body}</h1>
+        {raven.location ? (
+          <a
+            href={locationMapsUrl(raven.location)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-ink-soft hover:text-accent"
+          >
+            <LocationIcon className="size-4" />
+            {raven.location}
+          </a>
+        ) : null}
         {raven.media_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -70,54 +92,13 @@ export default async function RavenPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {inThread ? (
-        <div className="mt-8 border-t border-line pt-5">
-          <div className="flex flex-col gap-2">
-            {raven.replies
-              .slice()
-              .sort((a, b) => a.created_at.localeCompare(b.created_at))
-              .map((reply) => {
-                const mine = reply.author_id === session.userId;
-                return (
-                  <div
-                    key={reply.id}
-                    className={`flex max-w-[80%] flex-col gap-1 ${mine ? "items-end self-end" : "items-start self-start"}`}
-                  >
-                    {!mine ? (
-                      <p className="ml-3 text-[11px] font-medium text-ink-faint">
-                        {reply.author?.display_name ?? "Someone"}
-                      </p>
-                    ) : null}
-                    {reply.media_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={reply.media_url}
-                        alt=""
-                        className="max-h-64 max-w-full rounded-2xl border border-line object-cover"
-                      />
-                    ) : null}
-                    {reply.body ? (
-                      <div
-                        className={`rounded-2xl px-3.5 py-2 text-[15px] leading-snug ${
-                          mine
-                            ? "rounded-br-md bg-accent text-white"
-                            : "rounded-bl-md bg-sunken text-ink"
-                        }`}
-                      >
-                        <p>{reply.body}</p>
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-          </div>
-          {!expired ? (
-            <div className="mt-4">
-              <ReplyForm ravenId={raven.id} />
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-ink-faint">This raven has flown — the chat is closed.</p>
-          )}
-        </div>
+        <ReplyThread
+          ravenId={raven.id}
+          initialReplies={raven.replies}
+          participants={participants}
+          viewerId={session.userId}
+          expired={expired}
+        />
       ) : me && !expired ? (
         <p className="mt-8 text-sm text-ink-faint">Say you&apos;re in to join the chat.</p>
       ) : null}
