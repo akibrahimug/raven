@@ -12,7 +12,7 @@ import { colors, friendlyError, normalisePhone } from "@raven/shared";
 import { supabase } from "../lib/supabase";
 import { Plane, displayText } from "../components/ui";
 
-export function LoginScreen() {
+export function LoginScreen({ onUseSignup }: { onUseSignup: () => void }) {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "code">("phone");
@@ -106,6 +106,10 @@ export function LoginScreen() {
       )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <Pressable onPress={onUseSignup} style={{ marginTop: 24 }}>
+        <Text style={styles.secondary}>New here? Sign up</Text>
+      </Pressable>
     </KeyboardAvoidingView>
   );
 }

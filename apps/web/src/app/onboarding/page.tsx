@@ -11,21 +11,29 @@ export default async function OnboardingPage({
   const [session, { next, error }] = await Promise.all([getSessionProfile(), searchParams]);
   if (!session) redirect("/login");
   if (session.profile) redirect(next || "/");
+  const hint = session.oauthHint;
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 pb-24">
-      <RavenMark className="size-12 text-accent" />
+      {hint?.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={hint.avatarUrl} alt="" className="size-14 rounded-full border border-line object-cover" />
+      ) : (
+        <RavenMark className="size-12 text-accent" />
+      )}
       <h1 className="invitation mt-5 text-3xl">What do your friends call you?</h1>
       <p className="mt-2 text-sm text-ink-soft">
         This is the name that lands with your ravens. First name is perfect.
       </p>
       <form action={completeOnboarding} className="mt-8 flex flex-col gap-3">
         <input type="hidden" name="next" value={next || "/"} />
+        {hint?.avatarUrl ? <input type="hidden" name="avatar_url" value={hint.avatarUrl} /> : null}
         <input
           name="display_name"
           required
           maxLength={40}
           autoFocus
+          defaultValue={hint?.displayName ?? ""}
           placeholder="AK"
           className="rounded-2xl border border-line bg-raised px-5 py-4 text-lg focus:border-accent focus:outline-none"
         />
@@ -36,6 +44,11 @@ export default async function OnboardingPage({
           Done
         </button>
       </form>
+      {hint ? (
+        <p className="mt-3 text-center text-xs text-ink-faint">
+          Pulled from your Google account — change it if you&apos;d rather use something else.
+        </p>
+      ) : null}
       {error ? <p className="mt-4 text-sm text-late-amber">{error}</p> : null}
       <form action={signOut} className="mt-4 text-center">
         <button type="submit" className="text-sm text-ink-faint underline-offset-2 hover:underline">

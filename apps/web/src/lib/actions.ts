@@ -18,10 +18,16 @@ export async function completeOnboarding(formData: FormData) {
   const { supabase, user } = await requireUser();
   const displayName = String(formData.get("display_name") ?? "").trim();
   const next = String(formData.get("next") ?? "") || "/";
+  // Only present when onboarding was pre-filled from a Google sign-in — see
+  // getSessionProfile's oauthHint. Never user-editable here; they can still
+  // change it afterward via the existing avatar uploader in Settings.
+  const avatarUrl = formData.get("avatar_url");
   if (!displayName) return;
-  const { error } = await supabase
-    .from("profiles")
-    .insert({ id: user.id, display_name: displayName });
+  const { error } = await supabase.from("profiles").insert({
+    id: user.id,
+    display_name: displayName,
+    avatar_url: typeof avatarUrl === "string" && avatarUrl ? avatarUrl : null,
+  });
   if (error && error.code !== "23505") {
     const params = new URLSearchParams({ next, error: friendlyError(error) });
     redirect(`/onboarding?${params}`);

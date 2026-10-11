@@ -63,10 +63,10 @@ export default async function InvitePage({
         </form>
       ) : (
         <Link
-          href={`/login?next=${encodeURIComponent(`/j/${code}`)}`}
+          href={`/signup?next=${encodeURIComponent(`/j/${code}`)}`}
           className="mt-10 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]"
         >
-          Sign in to accept
+          Sign up to accept
         </Link>
       )}
     </main>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,8 +13,18 @@ import { createProfile } from "../lib/data";
 import { supabase } from "../lib/supabase";
 import { Plane, displayText } from "../components/ui";
 
-export function OnboardingScreen({ userId, onDone }: { userId: string; onDone: () => void }) {
-  const [name, setName] = useState("");
+export function OnboardingScreen({
+  userId,
+  hint,
+  onDone,
+}: {
+  userId: string;
+  /** Name/photo from a Google sign-in — a starting point to confirm, not
+   *  written until "Done" is pressed. Undefined for phone/email sign-ins. */
+  hint?: { displayName: string | null; avatarUrl: string | null } | null;
+  onDone: () => void;
+}) {
+  const [name, setName] = useState(hint?.displayName ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -21,7 +32,7 @@ export function OnboardingScreen({ userId, onDone }: { userId: string; onDone: (
     if (!name.trim() || busy) return;
     setBusy(true);
     try {
-      await createProfile(userId, name.trim());
+      await createProfile(userId, name.trim(), hint?.avatarUrl);
       onDone();
     } catch (e) {
       // A foreign-key failure here means this session's user id no longer
@@ -41,9 +52,17 @@ export function OnboardingScreen({ userId, onDone }: { userId: string; onDone: (
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       style={styles.container}
     >
-      <Plane size={44} />
+      {hint?.avatarUrl ? (
+        <Image source={{ uri: hint.avatarUrl }} style={styles.avatar} />
+      ) : (
+        <Plane size={44} />
+      )}
       <Text style={[displayText, styles.title]}>What do your friends call you?</Text>
-      <Text style={styles.hint}>This is the name that lands with your ravens.</Text>
+      <Text style={styles.hint}>
+        {hint?.avatarUrl
+          ? "Pulled from your Google account — change it if you'd rather use something else."
+          : "This is the name that lands with your ravens."}
+      </Text>
       <TextInput
         value={name}
         onChangeText={setName}
@@ -80,6 +99,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     gap: 12,
   },
+  avatar: { width: 44, height: 44, borderRadius: 22 },
   title: { fontSize: 28, marginTop: 10 },
   hint: { fontSize: 14, color: colors.inkSoft },
   input: {

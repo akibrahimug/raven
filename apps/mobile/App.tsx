@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import * as Linking from "expo-linking";
 import type { Session } from "@supabase/supabase-js";
 import { colors, type Profile } from "@raven/shared";
 import { supabase } from "./lib/supabase";
@@ -10,6 +11,7 @@ import { buzzArrival, loadPrefs } from "./lib/prefs";
 import { onNotificationTap, registerPushToken } from "./lib/push";
 import { Plane, displayText } from "./components/ui";
 import { Avatar } from "./components/Avatar";
+import { SignupScreen } from "./screens/SignupScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { InboxScreen } from "./screens/InboxScreen";
@@ -41,6 +43,7 @@ function Root() {
   const [friendCount, setFriendCount] = useState(0);
   const [route, setRoute] = useState<Route>({ name: "inbox" });
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     loadPrefs();
@@ -52,12 +55,45 @@ function Root() {
       if (!next) {
         setProfile(null);
         setRoute({ name: "inbox" });
+        setShowLogin(false);
       }
     });
     return () => subscription.unsubscribe();
   }, []);
 
+  // The email magic link opens raven://auth/callback from the Mail app —
+  // Google's own redirect is handled entirely inside SignupScreen via
+  // WebBrowser.openAuthSessionAsync and never reaches this listener.
+  useEffect(() => {
+    async function handleUrl(url: string) {
+      const { path, queryParams } = Linking.parse(url);
+      const code = queryParams?.code;
+      if (path?.includes("auth/callback") && typeof code === "string") {
+        await supabase.auth.exchangeCodeForSession(code);
+      }
+    }
+    Linking.getInitialURL().then((url) => {
+      if (url) handleUrl(url);
+    });
+    const subscription = Linking.addEventListener("url", ({ url }) => handleUrl(url));
+    return () => subscription.remove();
+  }, []);
+
   const userId = session?.user.id ?? null;
+
+  // Mirrors the web getSessionProfile oauthHint logic — only Google sign-ins
+  // carry a name/photo worth pre-filling onboarding with.
+  const oauthHint =
+    session?.user.app_metadata?.provider === "google"
+      ? {
+          displayName: (session.user.user_metadata?.full_name ??
+            session.user.user_metadata?.name ??
+            null) as string | null,
+          avatarUrl: (session.user.user_metadata?.avatar_url ??
+            session.user.user_metadata?.picture ??
+            null) as string | null,
+        }
+      : null;
 
   useEffect(() => {
     if (!userId) return;
@@ -109,10 +145,18 @@ function Root() {
 
   let screen: React.ReactNode;
   if (!session || !userId) {
-    screen = <LoginScreen />;
+    screen = showLogin ? (
+      <LoginScreen onUseSignup={() => setShowLogin(false)} />
+    ) : (
+      <SignupScreen onUseLogin={() => setShowLogin(true)} />
+    );
   } else if (!profile) {
     screen = (
-      <OnboardingScreen userId={userId} onDone={() => setRefreshKey((k) => k + 1)} />
+      <OnboardingScreen
+        userId={userId}
+        hint={oauthHint}
+        onDone={() => setRefreshKey((k) => k + 1)}
+      />
     );
   } else if (route.name === "compose") {
     screen = (

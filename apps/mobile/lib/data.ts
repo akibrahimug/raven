@@ -47,10 +47,14 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   return (data as Profile | null) ?? null;
 }
 
-export async function createProfile(userId: string, displayName: string): Promise<void> {
+export async function createProfile(
+  userId: string,
+  displayName: string,
+  avatarUrl?: string | null,
+): Promise<void> {
   const { error } = await supabase
     .from("profiles")
-    .insert({ id: userId, display_name: displayName });
+    .insert({ id: userId, display_name: displayName, avatar_url: avatarUrl ?? null });
   if (error && error.code !== "23505") throw new Error(friendlyError(error));
 }
 

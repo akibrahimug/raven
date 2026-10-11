@@ -32,7 +32,8 @@
           "color": "#FF5C39",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

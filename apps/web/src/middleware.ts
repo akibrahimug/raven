@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = [/^\/login/, /^\/j\//];
+const PUBLIC_PATHS = [/^\/login/, /^\/signup/, /^\/auth\/callback/, /^\/j\//];
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -35,7 +35,10 @@ export async function middleware(request: NextRequest) {
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    // New visitors land on signup; an existing session that's merely
+    // expired still goes to /login — see the redirect() calls in actions.ts
+    // that route an explicit sign-out there instead of here.
+    url.pathname = "/signup";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }

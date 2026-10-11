@@ -67,14 +67,28 @@ export async function getRaven(id: string): Promise<RavenDetail | null> {
   return data as unknown as RavenDetail | null;
 }
 
-export async function getSessionProfile(): Promise<{ userId: string; profile: Profile | null } | null> {
+export async function getSessionProfile(): Promise<{
+  userId: string;
+  profile: Profile | null;
+  /** Name/photo Google handed back on sign-in, for onboarding to pre-fill —
+   *  a starting point the person still confirms, never written directly. */
+  oauthHint: { displayName: string | null; avatarUrl: string | null } | null;
+} | null> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
   const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  return { userId: user.id, profile: data ?? null };
+  const meta = user.user_metadata ?? {};
+  const oauthHint =
+    user.app_metadata?.provider === "google"
+      ? {
+          displayName: (meta.full_name ?? meta.name ?? null) as string | null,
+          avatarUrl: (meta.avatar_url ?? meta.picture ?? null) as string | null,
+        }
+      : null;
+  return { userId: user.id, profile: data ?? null, oauthHint };
 }
 
 export async function getFriends(userId: string): Promise<Profile[]> {

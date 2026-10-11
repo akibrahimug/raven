@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { friendlyError } from "@raven/shared";
@@ -118,6 +119,13 @@ function LoginForm() {
       )}
 
       {error ? <p className="mt-4 text-center text-sm text-late-amber">{error}</p> : null}
+
+      <p className="mt-10 text-center text-sm text-ink-soft">
+        New here?{" "}
+        <Link href={`/signup${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-semibold text-ink hover:text-accent">
+          Sign up
+        </Link>
+      </p>
     </main>
   );
 }
