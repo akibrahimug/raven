@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { friendlyError } from "@raven/shared";
+import { AUTH_NOTICES, friendlyError } from "@raven/shared";
 import { createClient } from "@/lib/supabase/client";
 import { RavenMark } from "@/components/RavenMark";
 import { SpinnerIcon } from "@/components/icons";
@@ -32,8 +32,11 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 function SignupForm() {
-  const next = useSearchParams().get("next") ?? "/";
-  const urlError = useSearchParams().get("error");
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "/";
+  const urlError = searchParams.get("error");
+  // Arrived from /login with a number no account has.
+  const notice = searchParams.get("notice") === "no-account" ? AUTH_NOTICES["no-account"] : null;
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busyGoogle, setBusyGoogle] = useState(false);
@@ -83,6 +86,11 @@ function SignupForm() {
       </div>
 
       <div className="mt-12 flex flex-col gap-3">
+        {notice ? (
+          <p className="mb-1 rounded-2xl border border-line bg-raised px-5 py-4 text-center text-sm text-ink-soft">
+            {notice}
+          </p>
+        ) : null}
         <button
           type="button"
           onClick={continueWithGoogle}

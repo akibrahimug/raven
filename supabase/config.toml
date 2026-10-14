@@ -161,7 +161,9 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# `pnpm web` serves on localhost, which GoTrue doesn't count as the
+# 127.0.0.1 above — without this, email links fall back to the bare site URL.
+additional_redirect_urls = ["https://127.0.0.1:3000", "http://localhost:3000/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -259,20 +261,27 @@ otp_expiry = 3600
 # Allow/disallow new user signups via SMS to your project.
 enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
-enable_confirmations = false
+# Must stay on: it's also what makes adding a number to a Google/email
+# account wait for the SMS code (see migration 20261014000010).
+enable_confirmations = true
 # Template for sending OTP to users
 template = "Your code is {{ `{{ .Code }}` }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
 # Use pre-defined map of phone number to OTP for testing.
-# Fictional UK numbers (Ofcom-reserved 07700 900xxx) — OTP is always 123456.
+# Ofcom's fictional 01632 960xxx numbers — OTP is always 123456. Not the
+# 07700 900xxx drama range: the live server's test logins live there, and
+# the database won't start a new account on one (migration 20261014000010).
 [auth.sms.test_otp]
+441632960001 = "123456"
+441632960002 = "123456"
+441632960003 = "123456"
+441632960004 = "123456"
+441632960005 = "123456"
+# Only so scripts/smoke.mjs can show the database refusing to start an
+# account on the live server's test range.
 447700900001 = "123456"
-447700900002 = "123456"
-447700900003 = "123456"
-447700900004 = "123456"
-447700900005 = "123456"
 
 # Configure logged in session timeouts.
 # [auth.sessions]

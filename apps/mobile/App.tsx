@@ -4,7 +4,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-cont
 import { StatusBar } from "expo-status-bar";
 import * as Linking from "expo-linking";
 import type { Session } from "@supabase/supabase-js";
-import { colors, type Profile } from "@raven/shared";
+import { colors, type AuthNotice, type Profile } from "@raven/shared";
 import { supabase } from "./lib/supabase";
 import { fetchFriends, fetchProfile } from "./lib/data";
 import { buzzArrival, loadPrefs } from "./lib/prefs";
@@ -14,6 +14,7 @@ import { Avatar } from "./components/Avatar";
 import { SignupScreen } from "./screens/SignupScreen";
 import { LoginScreen } from "./screens/LoginScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { PhoneScreen } from "./screens/PhoneScreen";
 import { InboxScreen } from "./screens/InboxScreen";
 import { ComposeScreen } from "./screens/ComposeScreen";
 import { RavenScreen } from "./screens/RavenScreen";
@@ -27,6 +28,10 @@ type Route =
   | { name: "raven"; id: string }
   | { name: "friends" }
   | { name: "settings" };
+
+/** Signed-out screens. A notice explains a hand-off between the two (see
+ *  AUTH_NOTICES); `phone` carries a number typed during sign-up into login. */
+type AuthScreen = { name: "signup" | "login"; notice?: AuthNotice; phone?: string };
 
 export default function App() {
   return (
@@ -43,7 +48,7 @@ function Root() {
   const [friendCount, setFriendCount] = useState(0);
   const [route, setRoute] = useState<Route>({ name: "inbox" });
   const [refreshKey, setRefreshKey] = useState(0);
-  const [showLogin, setShowLogin] = useState(false);
+  const [authScreen, setAuthScreen] = useState<AuthScreen>({ name: "signup" });
 
   useEffect(() => {
     loadPrefs();
@@ -55,7 +60,7 @@ function Root() {
       if (!next) {
         setProfile(null);
         setRoute({ name: "inbox" });
-        setShowLogin(false);
+        setAuthScreen({ name: "signup" });
       }
     });
     return () => subscription.unsubscribe();
@@ -145,10 +150,32 @@ function Root() {
 
   let screen: React.ReactNode;
   if (!session || !userId) {
-    screen = showLogin ? (
-      <LoginScreen onUseSignup={() => setShowLogin(false)} />
-    ) : (
-      <SignupScreen onUseLogin={() => setShowLogin(true)} />
+    screen =
+      authScreen.name === "login" ? (
+        <LoginScreen
+          notice={authScreen.notice}
+          initialPhone={authScreen.phone}
+          onUseSignup={(notice) => setAuthScreen({ name: "signup", notice })}
+        />
+      ) : (
+        <SignupScreen
+          notice={authScreen.notice}
+          onUseLogin={() => setAuthScreen({ name: "login" })}
+        />
+      );
+  } else if (!session.user.phone_confirmed_at) {
+    // Signing up is email first, then the number — a Google/email account
+    // without a verified one goes no further.
+    screen = (
+      <PhoneScreen
+        onNumberTaken={async (phone) => {
+          // That number already has an account: drop this half-made
+          // sign-up and log in with it instead. signOut's listener resets
+          // to signup first, so the login screen is set after it resolves.
+          await supabase.auth.signOut();
+          setAuthScreen({ name: "login", notice: "taken", phone });
+        }}
+      />
     );
   } else if (!profile) {
     screen = (

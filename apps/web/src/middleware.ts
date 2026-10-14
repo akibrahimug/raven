@@ -43,6 +43,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Google and email sign-ups arrive without a phone number, but the number
+  // is how a Raven account logs back in — until it's verified by SMS code,
+  // /phone is the only page that opens.
+  if (user && !user.phone_confirmed_at && !isPublic && pathname !== "/phone") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/phone";
+    url.search = "";
+    url.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+    const redirect = NextResponse.redirect(url);
+    // getUser() above may have just refreshed the session; a redirect that
+    // dropped the new cookies would leave the browser holding a rotated-out
+    // refresh token.
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
+
   return response;
 }
 

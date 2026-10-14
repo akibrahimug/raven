@@ -21,19 +21,33 @@ function check(condition, label) {
   if (!condition) failed = true;
 }
 
-async function signIn(phone) {
-  const supabase = createClient(URL, ANON, { auth: { persistSession: false } });
-  const { error: otpError } = await supabase.auth.signInWithOtp({ phone });
-  if (otpError) throw new Error(`otp ${phone}: ${otpError.message}`);
-  const { data, error } = await supabase.auth.verifyOtp({ phone, token: "123456", type: "sms" });
-  if (error) throw new Error(`verify ${phone}: ${error.message}`);
-  return { supabase, user: data.user };
+const PASSWORD = "raven-local-only";
+
+function client() {
+  return createClient(URL, ANON, { auth: { persistSession: false } });
+}
+
+// Email first, then the number, verified by code: the local stack confirms
+// emails on the spot and never really texts ([auth.sms.test_otp]).
+async function signUp(email, phone) {
+  const supabase = client();
+  const { data, error } = await supabase.auth.signUp({ email, password: PASSWORD });
+  if (error) throw new Error(`sign up ${email}: ${error.message}`);
+  const { error: phoneError } = await supabase.auth.updateUser({ phone });
+  if (phoneError) throw new Error(`add ${phone}: ${phoneError.message}`);
+  const { data: verified, error: verifyError } = await supabase.auth.verifyOtp({
+    phone,
+    token: "123456",
+    type: "phone_change",
+  });
+  if (verifyError) throw new Error(`verify ${phone}: ${verifyError.message}`);
+  return { supabase, user: verified.user ?? data.user };
 }
 
 // Three test users from supabase/config.toml [auth.sms.test_otp]
-const ak = await signIn("+447700900001");
-const tom = await signIn("+447700900002");
-const jess = await signIn("+447700900003");
+const ak = await signUp("ak@raven.test", "+441632960001");
+const tom = await signUp("tom@raven.test", "+441632960002");
+const jess = await signUp("jess@raven.test", "+441632960003");
 
 for (const [session, name] of [
   [ak, "AK"],
@@ -208,6 +222,73 @@ const { error: nonFriendError } = await tom.supabase
   .insert([{ raven_id: tomRaven.id, recipient_id: jess.user.id }]);
 check(!!nonFriendError, "ravens cannot be sent to non-friends");
 await tom.supabase.from("ravens").delete().eq("id", tomRaven.id);
+
+// Signing up is email first, then a number proven by SMS code; logging in
+// never makes an account (migration 20261014000010).
+const stranger = client();
+const { error: phoneOnlyError } = await stranger.auth.signInWithOtp({ phone: "+441632960004" });
+const { error: unknownLoginError } = await stranger.auth.signInWithOtp({
+  phone: "+441632960004",
+  options: { shouldCreateUser: false },
+});
+check(
+  !!phoneOnlyError && unknownLoginError?.code === "otp_disabled",
+  "nobody signs up with just a phone number",
+);
+
+const newcomer = client();
+const { data: newcomerSignUp } = await newcomer.auth.signUp({
+  email: `newcomer-${Date.now()}@raven.test`,
+  password: PASSWORD,
+});
+const { error: earlyProfileError } = await newcomer
+  .from("profiles")
+  .insert({ id: newcomerSignUp.user.id, display_name: "Too soon" });
+check(!!earlyProfileError, "no profile until a phone number is verified");
+
+const { error: takenError } = await newcomer.auth.updateUser({ phone: "+441632960001" });
+check(takenError?.code === "phone_exists", "a phone number belongs to one account");
+
+const { data: pending } = await newcomer.auth.updateUser({ phone: "+441632960005" });
+check(!pending.user?.phone_confirmed_at, "a new number waits for its SMS code");
+
+// GoTrue matches a phone-change code to the first account it finds with the
+// number pending, so an abandoned sign-up mustn't shadow a newer one.
+const abandoned = client();
+await abandoned.auth.signUp({ email: `abandoned-${Date.now()}@raven.test`, password: PASSWORD });
+await abandoned.auth.updateUser({ phone: "+441632960004" });
+const retry = client();
+const { data: retrySignUp } = await retry.auth.signUp({
+  email: `retry-${Date.now()}@raven.test`,
+  password: PASSWORD,
+});
+await retry.auth.updateUser({ phone: "+441632960004" });
+const { data: retryVerified } = await retry.auth.verifyOtp({
+  phone: "+441632960004",
+  token: "123456",
+  type: "phone_change",
+});
+check(retryVerified.user?.id === retrySignUp.user.id, "the latest code request for a number wins");
+
+// A fresh account: a second number on the first would trip the SMS throttle.
+const tester = client();
+const { data: testerSignUp } = await tester.auth.signUp({
+  email: `tester-${Date.now()}@raven.test`,
+  password: PASSWORD,
+});
+const { error: testRangeAddError } = await tester.auth.updateUser({ phone: "+447700900001" });
+const { error: testRangeCodeError } = await tester.auth.verifyOtp({
+  phone: "+447700900001",
+  token: "123456",
+  type: "phone_change",
+});
+const { error: testRangeProfileError } = await tester
+  .from("profiles")
+  .insert({ id: testerSignUp.user.id, display_name: "Test range" });
+check(
+  !testRangeAddError && !testRangeCodeError && !!testRangeProfileError,
+  "a 07700 900xxx test number can't start an account",
+);
 
 console.log(failed ? "\nSMOKE FAILED" : "\nALL CHECKS PASSED");
 process.exit(failed ? 1 : 0);

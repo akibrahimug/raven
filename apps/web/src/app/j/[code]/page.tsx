@@ -32,6 +32,9 @@ export default async function InvitePage({
   }
 
   const session = await getSessionProfile();
+  if (session && !session.phoneVerified) {
+    redirect(`/phone?next=${encodeURIComponent(`/j/${code}`)}`);
+  }
   if (session && !session.profile) {
     redirect(`/onboarding?next=${encodeURIComponent(`/j/${code}`)}`);
   }

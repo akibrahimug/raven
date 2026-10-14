@@ -52,16 +52,23 @@ A raven landing in your inbox triggers a haptic buzz by default (toggle it off
 in Settings). Sending one morphs the send button into a paper plane that flies
 off screen, via React Native's built-in `Animated` API — no extra dependency.
 
-Sign in with a **test phone number** — no real SMS is sent:
+Signing up is **email first, then a phone number** verified by SMS code;
+logging back in is the number alone, and a number with no account is sent to
+sign up. Locally, sign up with any email — the link lands in the local inbox
+at http://127.0.0.1:54324 (Google isn't configured locally) — then add a
+**test phone number**; no real SMS is sent:
 
 | Phone           | OTP    |
 | --------------- | ------ |
-| 07700 900001    | 123456 |
-| 07700 900002    | 123456 |
-| 07700 900003–5  | 123456 |
+| 01632 960001    | 123456 |
+| 01632 960002    | 123456 |
+| 01632 960003–5  | 123456 |
 
-To simulate two friends, sign in as one number, grab your invite link from
-**Friends**, sign out, sign in as another number and open the link. Or skip the
+Not 07700 900xxx: the live server's test logins live in that range, and the
+database won't start a new account on one.
+
+To simulate two friends, sign up as one, grab your invite link from
+**Friends**, sign out, sign up as another and open the link. Or skip the
 manual setup entirely:
 
 ```sh
@@ -77,11 +84,13 @@ every account's **For you** tab has something to accept or decline immediately.
 node scripts/smoke.mjs
 ```
 
-Eighteen checks drive three users through sign-up → invite links → sending →
+Twenty-four checks drive three users through sign-up → invite links → sending →
 RSVPs → rewards → threads, asserting the privacy and points rules hold
 (who's-in visible, declines and pending invisible, threads sender+attending
 only, no ravens to non-friends, points awarded only for accepted RSVPs and
-never self-assignable). Run against a clean database — `supabase db reset`
+never self-assignable) along with the sign-up rules (no phone-only sign-ups,
+no profile before a verified number, one account per number, the latest code
+request for a number wins, no new accounts on the test range). Run against a clean database — `supabase db reset`
 first if you've already run `seed-dev.mjs`, since it befriends everyone and
 will trip the "declined/non-friend" checks.
 
@@ -107,8 +116,8 @@ inbox only shows live ones. Your private history lives under **Past** (web
 
 1. Create a project at https://supabase.com/dashboard/new
 2. `supabase link --project-ref <ref>` then `supabase db push`
-3. Dashboard → Auth → Sign In / Up → Phone: enable, add the test numbers above
-   (or real Twilio credentials for real SMS)
+3. Dashboard → Auth → Sign In / Up → Phone: enable, keep phone confirmations
+   on, add the test numbers above (or real Twilio credentials for real SMS)
 4. Copy Project URL + anon key into `apps/web/.env.local`
    (see `.env.example`), deploy `apps/web` to Vercel, set the same env vars
    plus `NEXT_PUBLIC_APP_URL` to the deployed URL so invite links work.

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { friendlyError, type RsvpStatus } from "@raven/shared";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/redirect";
 
 async function requireUser() {
   const supabase = await createClient();
@@ -11,13 +12,16 @@ async function requireUser() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  // Middleware already holds every private page at /phone until the number
+  // is verified; this covers actions posted from public ones like /j/.
+  if (!user.phone_confirmed_at) redirect("/phone");
   return { supabase, user };
 }
 
 export async function completeOnboarding(formData: FormData) {
   const { supabase, user } = await requireUser();
   const displayName = String(formData.get("display_name") ?? "").trim();
-  const next = String(formData.get("next") ?? "") || "/";
+  const next = safeNext(String(formData.get("next") ?? ""));
   // Only present when onboarding was pre-filled from a Google sign-in — see
   // getSessionProfile's oauthHint. Never user-editable here; they can still
   // change it afterward via the existing avatar uploader in Settings.

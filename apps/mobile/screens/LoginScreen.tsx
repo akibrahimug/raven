@@ -8,12 +8,21 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { colors, friendlyError, normalisePhone } from "@raven/shared";
+import { AUTH_NOTICES, colors, friendlyError, normalisePhone, type AuthNotice } from "@raven/shared";
 import { supabase } from "../lib/supabase";
 import { Plane, displayText } from "../components/ui";
 
-export function LoginScreen({ onUseSignup }: { onUseSignup: () => void }) {
-  const [phone, setPhone] = useState("");
+export function LoginScreen({
+  notice,
+  initialPhone,
+  onUseSignup,
+}: {
+  notice?: AuthNotice;
+  /** A number typed during sign-up that turned out to have an account. */
+  initialPhone?: string;
+  onUseSignup: (notice?: AuthNotice) => void;
+}) {
+  const [phone, setPhone] = useState(initialPhone ?? "");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +31,17 @@ export function LoginScreen({ onUseSignup }: { onUseSignup: () => void }) {
   async function requestCode() {
     setBusy(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithOtp({ phone: normalisePhone(phone) });
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: normalisePhone(phone),
+      // Logging in never makes an account — signing up starts with email.
+      options: { shouldCreateUser: false },
+    });
     setBusy(false);
+    if (error?.code === "otp_disabled") {
+      // No account has this number.
+      onUseSignup("no-account");
+      return;
+    }
     if (error) setError(friendlyError(error));
     else setStep("code");
   }
@@ -54,6 +72,11 @@ export function LoginScreen({ onUseSignup }: { onUseSignup: () => void }) {
 
       {step === "phone" ? (
         <View style={styles.form}>
+          {notice ? (
+            <View style={styles.noticeBox}>
+              <Text style={styles.noticeText}>{AUTH_NOTICES[notice]}</Text>
+            </View>
+          ) : null}
           <Text style={styles.label}>YOUR PHONE NUMBER</Text>
           <TextInput
             value={phone}
@@ -107,7 +130,7 @@ export function LoginScreen({ onUseSignup }: { onUseSignup: () => void }) {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Pressable onPress={onUseSignup} style={{ marginTop: 24 }}>
+      <Pressable onPress={() => onUseSignup()} style={{ marginTop: 24 }}>
         <Text style={styles.secondary}>New here? Sign up</Text>
       </Pressable>
     </KeyboardAvoidingView>
@@ -125,6 +148,15 @@ const styles = StyleSheet.create({
   wordmark: { fontSize: 42, marginTop: 8 },
   tagline: { fontSize: 16, color: colors.inkSoft },
   form: { marginTop: 44, gap: 10 },
+  noticeBox: {
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.paperRaised,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 6,
+  },
+  noticeText: { fontSize: 14, color: colors.inkSoft, textAlign: "center" },
   label: {
     fontSize: 11,
     fontWeight: "600",

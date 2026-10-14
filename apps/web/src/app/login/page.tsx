@@ -2,28 +2,47 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
-import { friendlyError } from "@raven/shared";
+import { Suspense, useEffect, useState } from "react";
+import { AUTH_NOTICES, friendlyError } from "@raven/shared";
 import { createClient } from "@/lib/supabase/client";
 import { normalisePhone } from "@/lib/format";
+import { takeStashedPhone } from "@/lib/handoff";
+import { safeNext } from "@/lib/redirect";
 import { RavenMark } from "@/components/RavenMark";
 import { SpinnerIcon } from "@/components/icons";
 
 function LoginForm() {
   const router = useRouter();
-  const next = useSearchParams().get("next") ?? "/";
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
+  // Arrived from the sign-up phone step with a number that's already on file.
+  const notice = searchParams.get("notice") === "taken" ? AUTH_NOTICES.taken : null;
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    const stashed = takeStashedPhone();
+    if (stashed) setPhone(stashed);
+  }, []);
+
   async function requestCode(event: React.FormEvent) {
     event.preventDefault();
     setBusy(true);
     setError(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({ phone: normalisePhone(phone) });
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: normalisePhone(phone),
+      // Logging in never makes an account — signing up starts with email.
+      options: { shouldCreateUser: false },
+    });
+    if (error?.code === "otp_disabled") {
+      // No account has this number.
+      router.push(`/signup?notice=no-account${next !== "/" ? `&next=${encodeURIComponent(next)}` : ""}`);
+      return;
+    }
     setBusy(false);
     if (error) setError(friendlyError(error));
     else setStep("code");
@@ -63,6 +82,11 @@ function LoginForm() {
 
       {step === "phone" ? (
         <form onSubmit={requestCode} className="mt-12 flex flex-col gap-3">
+          {notice ? (
+            <p className="mb-2 rounded-2xl border border-line bg-raised px-5 py-4 text-center text-sm text-ink-soft">
+              {notice}
+            </p>
+          ) : null}
           <label htmlFor="phone" className="text-xs font-medium uppercase tracking-wide text-ink-soft">
             Your phone number
           </label>

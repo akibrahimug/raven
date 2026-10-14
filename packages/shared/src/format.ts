@@ -36,11 +36,12 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[1][0]).toUpperCase();
 }
 
-/** Normalise UK-style input like 07700 900001 to E.164 (+447700900001). */
+/** Normalise UK national format like 07700 900001 (or the local stack's
+ *  01632 960001) to E.164 (+447700900001). */
 export function normalisePhone(raw: string): string {
   const digits = raw.replace(/[\s()-]/g, "");
   if (digits.startsWith("+")) return digits;
-  if (digits.startsWith("07")) return `+44${digits.slice(1)}`;
+  if (digits.startsWith("0")) return `+44${digits.slice(1)}`;
   if (digits.startsWith("447")) return `+${digits}`;
   return `+${digits}`;
 }

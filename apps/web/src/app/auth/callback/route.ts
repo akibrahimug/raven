@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/redirect";
 
 /** Lands here after both Google OAuth and the email magic link — Supabase's
  *  PKCE flow uses the same `code`-exchange shape for either provider, so one
@@ -7,13 +8,18 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const next = safeNext(searchParams.get("next"));
 
   if (code) {
     const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      // Signing up is email first, then the phone number: an account that
+      // hasn't verified one yet goes straight on to that step.
+      const destination = data.user.phone_confirmed_at
+        ? next
+        : `/phone?next=${encodeURIComponent(next)}`;
+      return NextResponse.redirect(`${origin}${destination}`);
     }
   }
 

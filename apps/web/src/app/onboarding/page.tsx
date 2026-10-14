@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { completeOnboarding, signOut } from "@/lib/actions";
 import { getSessionProfile } from "@/lib/data";
+import { safeNext } from "@/lib/redirect";
 import { RavenMark } from "@/components/RavenMark";
 
 export default async function OnboardingPage({
@@ -8,9 +9,11 @@ export default async function OnboardingPage({
 }: {
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const [session, { next, error }] = await Promise.all([getSessionProfile(), searchParams]);
+  const [session, params] = await Promise.all([getSessionProfile(), searchParams]);
+  const next = safeNext(params.next);
+  const { error } = params;
   if (!session) redirect("/login");
-  if (session.profile) redirect(next || "/");
+  if (session.profile) redirect(next);
   const hint = session.oauthHint;
 
   return (
@@ -21,12 +24,13 @@ export default async function OnboardingPage({
       ) : (
         <RavenMark className="size-12 text-accent" />
       )}
-      <h1 className="invitation mt-5 text-3xl">What do your friends call you?</h1>
+      <p className="mt-5 text-sm font-semibold text-accent">Welcome to Raven.</p>
+      <h1 className="invitation mt-1 text-3xl">What do your friends call you?</h1>
       <p className="mt-2 text-sm text-ink-soft">
         This is the name that lands with your ravens. First name is perfect.
       </p>
       <form action={completeOnboarding} className="mt-8 flex flex-col gap-3">
-        <input type="hidden" name="next" value={next || "/"} />
+        <input type="hidden" name="next" value={next} />
         {hint?.avatarUrl ? <input type="hidden" name="avatar_url" value={hint.avatarUrl} /> : null}
         <input
           name="display_name"

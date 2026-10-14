@@ -70,6 +70,9 @@ export async function getRaven(id: string): Promise<RavenDetail | null> {
 export async function getSessionProfile(): Promise<{
   userId: string;
   profile: Profile | null;
+  /** Signing up is email first, then a number proven by SMS code — false
+   *  for a Google/email account that hasn't finished the second step. */
+  phoneVerified: boolean;
   /** Name/photo Google handed back on sign-in, for onboarding to pre-fill —
    *  a starting point the person still confirms, never written directly. */
   oauthHint: { displayName: string | null; avatarUrl: string | null } | null;
@@ -88,7 +91,12 @@ export async function getSessionProfile(): Promise<{
           avatarUrl: (meta.avatar_url ?? meta.picture ?? null) as string | null,
         }
       : null;
-  return { userId: user.id, profile: data ?? null, oauthHint };
+  return {
+    userId: user.id,
+    profile: data ?? null,
+    phoneVerified: Boolean(user.phone_confirmed_at),
+    oauthHint,
+  };
 }
 
 export async function getFriends(userId: string): Promise<Profile[]> {

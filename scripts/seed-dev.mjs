@@ -5,7 +5,8 @@
  * initials fallback avatars in action too.
  *
  * Run: node scripts/seed-dev.mjs   (requires `supabase start`)
- * Test users: 07700 900001-5, OTP 123456.
+ * Test users sign up the way everyone does — email, then a phone number —
+ * and log back in with 01632 960001-5, OTP 123456.
  */
 import { createClient } from "@supabase/supabase-js";
 
@@ -15,24 +16,42 @@ const ANON =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0";
 
 const USERS = [
-  { phone: "+447700900001", name: "AK" },
-  { phone: "+447700900002", name: "Tom" },
-  { phone: "+447700900003", name: "Jess" },
-  { phone: "+447700900004", name: "Maya" },
-  { phone: "+447700900005", name: "Dev" },
+  { email: "ak@raven.test", phone: "+441632960001", name: "AK" },
+  { email: "tom@raven.test", phone: "+441632960002", name: "Tom" },
+  { email: "jess@raven.test", phone: "+441632960003", name: "Jess" },
+  { email: "maya@raven.test", phone: "+441632960004", name: "Maya" },
+  { email: "dev@raven.test", phone: "+441632960005", name: "Dev" },
 ];
+const PASSWORD = "raven-local-only";
 
-async function signIn(phone) {
+// Email first, then the number, verified by code: the local stack confirms
+// emails on the spot and never really texts ([auth.sms.test_otp]).
+// A re-run logs straight back in.
+async function signUp(email, phone) {
   const supabase = createClient(URL, ANON, { auth: { persistSession: false } });
-  await supabase.auth.signInWithOtp({ phone });
-  const { data, error } = await supabase.auth.verifyOtp({ phone, token: "123456", type: "sms" });
-  if (error) throw new Error(`${phone}: ${error.message}`);
-  return { supabase, user: data.user };
+  let { data, error } = await supabase.auth.signUp({ email, password: PASSWORD });
+  if (error?.code === "user_already_exists") {
+    ({ data, error } = await supabase.auth.signInWithPassword({ email, password: PASSWORD }));
+  }
+  if (error) throw new Error(`${email}: ${error.message}`);
+  let user = data.user;
+  if (!user.phone_confirmed_at) {
+    const { error: phoneError } = await supabase.auth.updateUser({ phone });
+    if (phoneError) throw new Error(`${phone}: ${phoneError.message}`);
+    const { data: verified, error: verifyError } = await supabase.auth.verifyOtp({
+      phone,
+      token: "123456",
+      type: "phone_change",
+    });
+    if (verifyError) throw new Error(`verify ${phone}: ${verifyError.message}`);
+    user = verified.user;
+  }
+  return { supabase, user };
 }
 
 const sessions = [];
 for (const spec of USERS) {
-  const session = await signIn(spec.phone);
+  const session = await signUp(spec.email, spec.phone);
   const { error } = await session.supabase
     .from("profiles")
     .insert({ id: session.user.id, display_name: spec.name });
@@ -86,4 +105,4 @@ await tom.supabase
   .from("raven_replies")
   .insert({ raven_id: pubRaven, author_id: tom.user.id, body: "Save me a stool 🍺" });
 
-console.log("\nSeeded. Sign in as any of 07700 900001-5 (code 123456) and the inbox is alive.");
+console.log("\nSeeded. Log in as any of 01632 960001-5 (code 123456) and the inbox is alive.");

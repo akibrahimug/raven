@@ -11,7 +11,7 @@ import {
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
 import Svg, { Path } from "react-native-svg";
-import { colors, friendlyError } from "@raven/shared";
+import { AUTH_NOTICES, colors, friendlyError, type AuthNotice } from "@raven/shared";
 import { supabase } from "../lib/supabase";
 import { Plane, displayText } from "../components/ui";
 
@@ -41,7 +41,13 @@ function GoogleIcon({ size = 20 }: { size?: number }) {
  *  for people who already have an account. Google opens a browser tab for
  *  the OAuth redirect rather than a native Credential Manager prompt — see
  *  the flowType comment in lib/supabase.ts for why. */
-export function SignupScreen({ onUseLogin }: { onUseLogin: () => void }) {
+export function SignupScreen({
+  notice,
+  onUseLogin,
+}: {
+  notice?: AuthNotice;
+  onUseLogin: () => void;
+}) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busyGoogle, setBusyGoogle] = useState(false);
@@ -102,6 +108,11 @@ export function SignupScreen({ onUseLogin }: { onUseLogin: () => void }) {
       </View>
 
       <View style={styles.form}>
+        {notice ? (
+          <View style={[styles.sentBox, styles.noticeBox]}>
+            <Text style={styles.sentText}>{AUTH_NOTICES[notice]}</Text>
+          </View>
+        ) : null}
         <Pressable
           onPress={continueWithGoogle}
           disabled={busyGoogle}
@@ -198,6 +209,7 @@ const styles = StyleSheet.create({
     padding: 18,
   },
   sentText: { fontSize: 14, color: colors.inkSoft, textAlign: "center" },
+  noticeBox: { marginBottom: 4 },
   input: {
     borderWidth: 1,
     borderColor: colors.line,

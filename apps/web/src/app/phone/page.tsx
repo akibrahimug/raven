@@ -1,0 +1,38 @@
+import { redirect } from "next/navigation";
+import { signOut } from "@/lib/actions";
+import { getSessionProfile } from "@/lib/data";
+import { safeNext } from "@/lib/redirect";
+import { RavenMark } from "@/components/RavenMark";
+import { PhoneForm } from "@/components/PhoneForm";
+
+/** Step two of signing up, after Google or the email link: the number is
+ *  what this account logs back in with, so middleware keeps every other
+ *  page closed until it's verified. */
+export default async function PhonePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const [session, params] = await Promise.all([getSessionProfile(), searchParams]);
+  const next = safeNext(params.next);
+  if (!session) redirect("/signup");
+  if (session.phoneVerified) {
+    redirect(session.profile ? next : `/onboarding?next=${encodeURIComponent(next)}`);
+  }
+
+  return (
+    <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-6 pb-24">
+      <RavenMark className="size-12 text-accent" />
+      <h1 className="invitation mt-5 text-3xl">What&apos;s your number?</h1>
+      <p className="mt-2 text-sm text-ink-soft">
+        It&apos;s how you log in to Raven. We&apos;ll text you a code to check it&apos;s yours.
+      </p>
+      <PhoneForm next={next} hasProfile={Boolean(session.profile)} />
+      <form action={signOut} className="mt-4 text-center">
+        <button type="submit" className="text-sm text-ink-faint underline-offset-2 hover:underline">
+          Not you? Sign out
+        </button>
+      </form>
+    </main>
+  );
+}

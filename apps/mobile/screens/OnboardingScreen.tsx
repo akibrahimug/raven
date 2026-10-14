@@ -57,6 +57,7 @@ export function OnboardingScreen({
       ) : (
         <Plane size={44} />
       )}
+      <Text style={styles.welcome}>Welcome to Raven.</Text>
       <Text style={[displayText, styles.title]}>What do your friends call you?</Text>
       <Text style={styles.hint}>
         {hint?.avatarUrl
@@ -100,7 +101,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   avatar: { width: 44, height: 44, borderRadius: 22 },
-  title: { fontSize: 28, marginTop: 10 },
+  welcome: { fontSize: 14, fontWeight: "700", color: colors.accent, marginTop: 10 },
+  title: { fontSize: 28 },
   hint: { fontSize: 14, color: colors.inkSoft },
   input: {
     marginTop: 12,

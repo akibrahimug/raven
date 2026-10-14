@@ -38,6 +38,10 @@ export function friendlyError(error: unknown): string {
   }
 
   // Auth
+  // GoTrue gives a mistyped code and a stale one the same answer.
+  if (raw.includes("token has expired or is invalid")) {
+    return "That code didn't work — check it, or get a new one.";
+  }
   if (raw.includes("token has expired") || raw.includes("otp_expired")) {
     return "That code has expired — request a new one.";
   }
@@ -47,8 +51,29 @@ export function friendlyError(error: unknown): string {
   if (raw.includes("for security purposes") || raw.includes("rate limit") || raw.includes("too many requests")) {
     return "You're going a bit fast — wait a moment and try again.";
   }
+  // The login and sign-up phone steps branch on these errors' codes
+  // (otp_disabled, phone_exists) before they ever get here — this copy is
+  // for anywhere that doesn't.
+  if (raw.includes("phone number has already been registered")) {
+    return "That number already has a Raven account.";
+  }
+  if (raw.includes("signups not allowed for otp")) {
+    return "There's no Raven account with that number yet.";
+  }
+  // GoTrue's own E.164 check, then Twilio's verdicts on numbers it can't text.
+  if (
+    (raw.includes("invalid") && raw.includes("phone number")) ||
+    raw.includes("not a valid phone number") ||
+    raw.includes("not a valid mobile number")
+  ) {
+    return "That doesn't look like a valid phone number.";
+  }
   if (raw.includes("sms") && (raw.includes("disabled") || raw.includes("not enabled") || raw.includes("provider"))) {
     return "Sign-in isn't available right now — try again shortly.";
+  }
+  // Same provider failure while texting a new number during sign-up.
+  if (raw.includes("otp to provider")) {
+    return "We couldn't text that number right now — try again shortly.";
   }
   if (raw.includes("user already registered")) {
     return "That number is already signed up — try signing in instead.";
