@@ -24,6 +24,7 @@ import { uploadPhotoBase64 } from "../lib/media";
 import { buzzTap } from "../lib/prefs";
 import { Avatar } from "../components/Avatar";
 import { displayText, LocationPin } from "../components/ui";
+import { Bone, Pulse } from "../components/Skeleton";
 
 const RSVP_PILLS: Array<{ status: Exclude<RsvpStatus, "pending">; label: string; color: string }> = [
   { status: "in", label: "I'm in", color: colors.in },
@@ -46,7 +47,8 @@ export function RavenScreen({
 }) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
-  const [raven, setRaven] = useState<RavenDetail | null>(null);
+  // undefined while loading; null once we know it's gone (recalled, or not yours).
+  const [raven, setRaven] = useState<RavenDetail | null | undefined>(undefined);
   const [reply, setReply] = useState("");
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -160,10 +162,43 @@ export function RavenScreen({
     };
   }, [ravenId]);
 
-  if (!raven) {
+  if (raven === undefined) {
+    // Mirrors the layout below: sender line, the message, the RSVP row, who's in.
     return (
-      <View style={styles.loading}>
-        <Text style={{ color: colors.inkFaint }}>…</Text>
+      <View style={styles.container}>
+        <View style={styles.scroll}>
+          <Pressable onPress={onBack} hitSlop={12}>
+            <Text style={styles.back}>← Back</Text>
+          </Pressable>
+          <Pulse style={styles.skeleton}>
+            <View style={styles.senderRow}>
+              <Bone style={{ width: 30, height: 30 }} />
+              <Bone style={{ width: 150, height: 10 }} />
+            </View>
+            <Bone style={{ width: "92%", height: 24 }} />
+            <Bone style={{ width: "62%", height: 24 }} />
+            <View style={styles.rsvpRow}>
+              <Bone style={{ width: 66, height: 31 }} />
+              <Bone style={{ width: 104, height: 31 }} />
+              <Bone style={{ width: 58, height: 31 }} />
+            </View>
+            <Bone style={{ width: "100%", height: 96, borderRadius: 16 }} />
+          </Pulse>
+        </View>
+      </View>
+    );
+  }
+
+  if (raven === null) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.scroll}>
+          <Pressable onPress={onBack} hitSlop={12}>
+            <Text style={styles.back}>← Back</Text>
+          </Pressable>
+          <Text style={[displayText, styles.goneTitle]}>This raven has flown.</Text>
+          <Text style={styles.goneHint}>It was recalled, or it&apos;s moved on.</Text>
+        </View>
       </View>
     );
   }
@@ -462,7 +497,9 @@ export function RavenScreen({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.paper },
-  loading: { flex: 1, alignItems: "center", justifyContent: "center" },
+  skeleton: { gap: 12 },
+  goneTitle: { fontSize: 24, color: colors.inkSoft, marginTop: 24 },
+  goneHint: { fontSize: 14, color: colors.inkFaint },
   scroll: { padding: 20, gap: 12 },
   back: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
   senderRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },

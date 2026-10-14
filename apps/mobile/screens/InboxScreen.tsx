@@ -13,6 +13,7 @@ import { fetchInbox, rsvp, type InboxRaven } from "../lib/data";
 import { buzzTap } from "../lib/prefs";
 import { Avatar } from "../components/Avatar";
 import { LocationPin, Plane, displayText } from "../components/ui";
+import { RavenListSkeleton } from "../components/Skeleton";
 
 function attendingLine(raven: InboxRaven, viewerId: string): string | null {
   const attending = raven.recipients.filter(
@@ -188,21 +189,27 @@ export function InboxScreen({
         </View>
       }
       ListEmptyComponent={
-        <View style={styles.empty}>
-          <Plane size={56} color={colors.inkFaint} />
-          <Text style={[displayText, styles.emptyTitle]}>
-            {past
-              ? "Nothing here yet."
-              : sent
-                ? "You haven't sent one yet."
-                : "The sky is clear."}
-          </Text>
-          <Text style={styles.emptyHint}>
-            {sent
-              ? "Tap Send a Raven whenever you're up to something."
-              : "When a friend is up to something, it'll land here."}
-          </Text>
-        </View>
+        // Until the first load lands, an empty list means "not here yet",
+        // not "nothing here" — show the cards' outline instead.
+        all === null ? (
+          <RavenListSkeleton />
+        ) : (
+          <View style={styles.empty}>
+            <Plane size={56} color={colors.inkFaint} />
+            <Text style={[displayText, styles.emptyTitle]}>
+              {past
+                ? "Nothing here yet."
+                : sent
+                  ? "You haven't sent one yet."
+                  : "The sky is clear."}
+            </Text>
+            <Text style={styles.emptyHint}>
+              {sent
+                ? "Tap Send a Raven whenever you're up to something."
+                : "When a friend is up to something, it'll land here."}
+            </Text>
+          </View>
+        )
       }
       renderItem={({ item }) => (
         <RavenCard

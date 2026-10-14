@@ -4,6 +4,7 @@ import { colors, levelForPoints, type Profile } from "@raven/shared";
 import { fetchFriends } from "../lib/data";
 import { Avatar } from "../components/Avatar";
 import { displayText } from "../components/ui";
+import { FriendRowsSkeleton } from "../components/Skeleton";
 
 const APP_URL = process.env.EXPO_PUBLIC_APP_URL ?? "http://localhost:3000";
 
@@ -16,11 +17,14 @@ export function FriendsScreen({
   inviteCode: string;
   onBack: () => void;
 }) {
-  const [friends, setFriends] = useState<Profile[]>([]);
+  // null until the first load lands — "not here yet", not "no one".
+  const [friends, setFriends] = useState<Profile[] | null>(null);
   const inviteUrl = `${APP_URL}/j/${inviteCode}`;
 
   useEffect(() => {
-    fetchFriends(userId).then(setFriends).catch(() => {});
+    fetchFriends(userId)
+      .then(setFriends)
+      .catch(() => setFriends([]));
   }, [userId]);
 
   async function share() {
@@ -53,7 +57,9 @@ export function FriendsScreen({
       </View>
 
       <Text style={[displayText, styles.sectionTitle]}>Friends</Text>
-      {friends.length === 0 ? (
+      {friends === null ? (
+        <FriendRowsSkeleton />
+      ) : friends.length === 0 ? (
         <Text style={styles.muted}>No one yet — share your link above.</Text>
       ) : (
         <View style={styles.list}>

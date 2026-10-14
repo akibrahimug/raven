@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSessionProfile } from "@/lib/data";
@@ -5,12 +6,11 @@ import { RavenMark } from "@/components/RavenMark";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { SendFab } from "@/components/SendFab";
 import { Avatar } from "@/components/Avatar";
+import { Bone } from "@/components/Skeleton";
 
-export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const session = await getSessionProfile();
-  if (!session) redirect("/login");
-  if (!session.profile) redirect("/onboarding");
-
+/** Renders without waiting on anything, so every page underneath can show
+ *  its loading state the moment it's opened — only the avatar streams in. */
+export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-4">
       <header className="sticky top-0 z-10 -mx-4 flex items-center justify-between bg-paper/90 px-4 py-4 backdrop-blur">
@@ -26,7 +26,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             Friends
           </Link>
           <Link href="/settings" aria-label="Settings">
-            <Avatar profile={session.profile} size="md" />
+            <Suspense fallback={<Bone className="size-9" />}>
+              <HeaderAvatar />
+            </Suspense>
           </Link>
         </nav>
       </header>
@@ -38,4 +40,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <RealtimeRefresh />
     </div>
   );
+}
+
+/** Also the app's last gate: middleware has already turned away anyone
+ *  signed out or without a verified number, which leaves a missing profile
+ *  — someone who hasn't picked a name yet. */
+async function HeaderAvatar() {
+  const session = await getSessionProfile();
+  if (!session) redirect("/login");
+  if (!session.profile) redirect("/onboarding");
+  return <Avatar profile={session.profile} size="md" />;
 }

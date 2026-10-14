@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { levelForPoints } from "@raven/shared";
 import { getFriends, getSessionProfile } from "@/lib/data";
-import { CopyInviteButton } from "@/components/CopyInviteButton";
 import { Avatar } from "@/components/Avatar";
+import { InviteCard } from "@/components/InviteCard";
+import { FriendRowsSkeleton } from "@/components/Skeleton";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +14,6 @@ export default async function FriendsPage({
 }) {
   const [session, { added }] = await Promise.all([getSessionProfile(), searchParams]);
   if (!session?.profile) return null;
-  const friends = await getFriends(session.userId);
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/j/${session.profile.invite_code}`;
 
@@ -24,42 +25,37 @@ export default async function FriendsPage({
         </p>
       ) : null}
 
-      <section className="rounded-2xl border border-line bg-raised p-5">
-        <h2 className="invitation text-xl">Your invite link</h2>
-        <p className="mt-1.5 text-sm text-ink-soft">
-          Every raven you send flies to everyone here — so only invite people you&apos;d
-          actually want turning up.
-        </p>
-        <p className="mt-3 truncate rounded-lg bg-sunken px-3 py-2 font-mono text-xs text-ink-soft">
-          {inviteUrl}
-        </p>
-        <div className="mt-4">
-          <CopyInviteButton url={inviteUrl} senderName={session.profile.display_name} />
-        </div>
-      </section>
+      <InviteCard invite={{ url: inviteUrl, senderName: session.profile.display_name }} />
 
       <section>
         <h2 className="invitation text-xl">Friends</h2>
-        {friends.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-faint">No one yet — share your link above.</p>
-        ) : (
-          <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-raised">
-            {friends.map((friend) => {
-              const level = levelForPoints(friend.points);
-              return (
-                <li key={friend.id} className="flex items-center gap-3 px-4 py-3">
-                  <Avatar profile={friend} size="md" />
-                  <span className="text-sm font-medium">{friend.display_name}</span>
-                  <span className="ml-auto text-xs font-semibold" style={{ color: level.color }}>
-                    {level.name}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <Suspense fallback={<FriendRowsSkeleton />}>
+          <FriendList userId={session.userId} />
+        </Suspense>
       </section>
-
     </div>
+  );
+}
+
+async function FriendList({ userId }: { userId: string }) {
+  const friends = await getFriends(userId);
+  if (friends.length === 0) {
+    return <p className="mt-2 text-sm text-ink-faint">No one yet — share your link above.</p>;
+  }
+  return (
+    <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-raised">
+      {friends.map((friend) => {
+        const level = levelForPoints(friend.points);
+        return (
+          <li key={friend.id} className="flex items-center gap-3 px-4 py-3">
+            <Avatar profile={friend} size="md" />
+            <span className="text-sm font-medium">{friend.display_name}</span>
+            <span className="ml-auto text-xs font-semibold" style={{ color: level.color }}>
+              {level.name}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

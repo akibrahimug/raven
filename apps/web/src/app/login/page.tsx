@@ -68,8 +68,10 @@ function LoginForm() {
       .select("id")
       .eq("id", data.user.id)
       .maybeSingle();
+    // No router.refresh() after this: the push already renders the page fresh
+    // with the new session, and a refresh on its heels makes the router wait
+    // for a second copy of the same page before showing anything.
     router.push(profile ? next : `/onboarding?next=${encodeURIComponent(next)}`);
-    router.refresh();
   }
 
   return (

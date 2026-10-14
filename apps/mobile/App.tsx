@@ -10,6 +10,7 @@ import { fetchFriends, fetchProfile } from "./lib/data";
 import { buzzArrival, loadPrefs } from "./lib/prefs";
 import { onNotificationTap, registerPushToken } from "./lib/push";
 import { Plane, displayText } from "./components/ui";
+import { RavenListSkeleton } from "./components/Skeleton";
 import { Avatar } from "./components/Avatar";
 import { SignupScreen } from "./screens/SignupScreen";
 import { LoginScreen } from "./screens/LoginScreen";
@@ -45,6 +46,10 @@ function Root() {
   const insets = useSafeAreaInsets();
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [profile, setProfile] = useState<Profile | null>(null);
+  // Whose profile `profile` is. Until it matches the signed-in user, null
+  // means "still loading" rather than "hasn't picked a name" — without this,
+  // every cold start flashed the onboarding screen at existing users.
+  const [profileFor, setProfileFor] = useState<string | null>(null);
   const [friendCount, setFriendCount] = useState(0);
   const [route, setRoute] = useState<Route>({ name: "inbox" });
   const [refreshKey, setRefreshKey] = useState(0);
@@ -59,6 +64,7 @@ function Root() {
       setSession(next);
       if (!next) {
         setProfile(null);
+        setProfileFor(null);
         setRoute({ name: "inbox" });
         setAuthScreen({ name: "signup" });
       }
@@ -102,7 +108,10 @@ function Root() {
 
   useEffect(() => {
     if (!userId) return;
-    fetchProfile(userId).then(setProfile).catch(() => {});
+    fetchProfile(userId)
+      .then(setProfile)
+      .catch(() => {})
+      .finally(() => setProfileFor(userId));
     fetchFriends(userId)
       .then((friends) => setFriendCount(friends.length))
       .catch(() => {});
@@ -176,6 +185,21 @@ function Root() {
           setAuthScreen({ name: "login", notice: "taken", phone });
         }}
       />
+    );
+  } else if (profileFor !== userId) {
+    // The app's chrome with the inbox's outline while the profile loads.
+    screen = (
+      <View style={styles.flex}>
+        <View style={styles.header}>
+          <View style={styles.brand}>
+            <Plane size={24} />
+            <Text style={[displayText, styles.wordmark]}>Raven</Text>
+          </View>
+        </View>
+        <View style={styles.loadingList}>
+          <RavenListSkeleton />
+        </View>
+      </View>
     );
   } else if (!profile) {
     screen = (
@@ -307,4 +331,5 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabLabel: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  loadingList: { padding: 16 },
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition } from "react";
+import { Suspense, use, useRef, useState, useTransition, type ReactNode } from "react";
 import {
   CUSTOM_EXPIRY_HOURS_MAX,
   CUSTOM_EXPIRY_HOURS_MIN,
@@ -16,13 +16,16 @@ import { sendRaven } from "@/lib/actions";
 import { uploadMedia } from "@/lib/storage";
 import { RavenMark } from "@/components/RavenMark";
 import { LocationIcon, PhotoIcon, XIcon } from "@/components/icons";
+import { Bone } from "@/components/Skeleton";
 
 const GLIDE_MS = 1100;
 const DEFAULT_CUSTOM_HOURS = "6";
 
 type ExpiryChoice = ExpiryPreset | "custom";
 
-export function ComposeForm({ friendCount }: { friendCount: number }) {
+/** `friendCount` arrives unresolved: the form is usable the moment the page
+ *  opens, and only the send button waits on it (SendArea). */
+export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
   const router = useRouter();
   const [body, setBody] = useState("");
   const [preset, setPreset] = useState<ExpiryChoice>(DEFAULT_EXPIRY_PRESET);
@@ -40,7 +43,7 @@ export function ComposeForm({ friendCount }: { friendCount: number }) {
   const customHoursValid =
     preset !== "custom" ||
     (Number(customHours) >= CUSTOM_EXPIRY_HOURS_MIN && Number(customHours) <= CUSTOM_EXPIRY_HOURS_MAX);
-  const ready = body.trim().length > 0 && friendCount > 0 && customHoursValid;
+  const ready = body.trim().length > 0 && customHoursValid;
 
   function pickPhoto(file: File | null) {
     if (preview) URL.revokeObjectURL(preview);
@@ -91,8 +94,8 @@ export function ComposeForm({ friendCount }: { friendCount: number }) {
         setError(result.error);
         return;
       }
+      // sendRaven already revalidated the inbox, so this lands on fresh data.
       router.push("/");
-      router.refresh();
     });
   }
 
@@ -228,28 +231,69 @@ export function ComposeForm({ friendCount }: { friendCount: number }) {
 
       {error ? <p className="text-sm text-late-amber">{error}</p> : null}
 
-      <div className="flex flex-col items-center gap-2">
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!ready || pending}
-          className="flex items-center gap-2.5 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-40"
-        >
-          <RavenMark className="size-5 text-white" />
-          Send the Raven
-        </button>
-        <p className="text-xs text-ink-faint">
-          {friendCount === 0
-            ? "No friends yet — share your invite link from the Friends page first."
-            : `Flies to all ${friendCount} of your friends. They decide.`}
-        </p>
-      </div>
+      <Suspense
+        fallback={
+          <SendButton disabled onSend={submit}>
+            <Bone className="my-0.5 h-3 w-56" />
+          </SendButton>
+        }
+      >
+        <SendArea friendCount={friendCount} ready={ready && !pending} onSend={submit} />
+      </Suspense>
 
       {gliding ? (
         <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-paper/60">
           <RavenMark className="raven-glide size-24 text-accent" />
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/** The one part of the form that waits on the server: whether there's
+ *  anyone to send to. Everything above it can be filled in meanwhile. */
+function SendArea({
+  friendCount,
+  ready,
+  onSend,
+}: {
+  friendCount: Promise<number>;
+  ready: boolean;
+  onSend: () => void;
+}) {
+  const count = use(friendCount);
+  return (
+    <SendButton disabled={!ready || count === 0} onSend={onSend}>
+      <p className="text-xs text-ink-faint">
+        {count === 0
+          ? "No friends yet — share your invite link from the Friends page first."
+          : `Flies to all ${count} of your friends. They decide.`}
+      </p>
+    </SendButton>
+  );
+}
+
+function SendButton({
+  disabled,
+  onSend,
+  children,
+}: {
+  disabled: boolean;
+  onSend: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <button
+        type="button"
+        onClick={onSend}
+        disabled={disabled}
+        className="flex items-center gap-2.5 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-40"
+      >
+        <RavenMark className="size-5 text-white" />
+        Send the Raven
+      </button>
+      {children}
     </div>
   );
 }

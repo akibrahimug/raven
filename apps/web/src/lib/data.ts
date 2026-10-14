@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { friendlyError, type Profile, type Raven, type RavenRecipient, type RavenReply } from "@raven/shared";
 import { createClient } from "@/lib/supabase/server";
 
@@ -67,7 +68,9 @@ export async function getRaven(id: string): Promise<RavenDetail | null> {
   return data as unknown as RavenDetail | null;
 }
 
-export async function getSessionProfile(): Promise<{
+/** Cached per request: the layout's header avatar and the page underneath
+ *  both ask, and share one round trip instead of making two. */
+export const getSessionProfile = cache(async (): Promise<{
   userId: string;
   profile: Profile | null;
   /** Signing up is email first, then a number proven by SMS code — false
@@ -76,7 +79,7 @@ export async function getSessionProfile(): Promise<{
   /** Name/photo Google handed back on sign-in, for onboarding to pre-fill —
    *  a starting point the person still confirms, never written directly. */
   oauthHint: { displayName: string | null; avatarUrl: string | null } | null;
-} | null> {
+} | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -97,6 +100,17 @@ export async function getSessionProfile(): Promise<{
     phoneVerified: Boolean(user.phone_confirmed_at),
     oauthHint,
   };
+});
+
+/** How many friends the viewer has, in one request: RLS already limits
+ *  friendships to the viewer's own, so there's no session lookup to wait on. */
+export async function getFriendCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("friendships")
+    .select("*", { count: "exact", head: true });
+  if (error) queryFailed("friend count", error);
+  return count ?? 0;
 }
 
 export async function getFriends(userId: string): Promise<Profile[]> {

@@ -58,8 +58,8 @@ export function PhoneForm({ next, hasProfile }: { next: string; hasProfile: bool
       setError(friendlyError(error));
       return;
     }
+    // Fresh render with the new session — no refresh needed (see login).
     router.push(hasProfile ? next : `/onboarding?next=${encodeURIComponent(next)}`);
-    router.refresh();
   }
 
   return (
