@@ -33,6 +33,18 @@ export function friendlyError(error: unknown): string {
   if (raw.includes("cannot add yourself")) {
     return "That's your own invite link — share it with a friend instead.";
   }
+  if (raw.includes("that request isn't there anymore")) {
+    return "That request isn't there anymore.";
+  }
+  if (raw.includes("isn't on raven anymore")) {
+    return "That account isn't on Raven anymore.";
+  }
+  if (raw.includes("finish signing up first")) {
+    return "Finish signing up first, then try again.";
+  }
+  if (raw.includes("too many numbers at once")) {
+    return "That's a lot of numbers at once — try again.";
+  }
   if (raw.includes("not signed in")) {
     return "You'll need to sign in first.";
   }

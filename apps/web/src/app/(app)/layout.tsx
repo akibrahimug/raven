@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSessionProfile } from "@/lib/data";
+import { getFriendRequests, getSessionProfile } from "@/lib/data";
 import { RavenMark } from "@/components/RavenMark";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { SendFab } from "@/components/SendFab";
@@ -22,8 +22,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/past" className="hover:text-ink">
             Past
           </Link>
-          <Link href="/friends" className="hover:text-ink">
+          <Link href="/friends" className="relative hover:text-ink">
             Friends
+            <Suspense fallback={null}>
+              <RequestsDot />
+            </Suspense>
           </Link>
           <Link href="/settings" aria-label="Settings">
             <Suspense fallback={<Bone className="size-9" />}>
@@ -50,4 +53,19 @@ async function HeaderAvatar() {
   if (!session) redirect("/login");
   if (!session.profile) redirect("/onboarding");
   return <Avatar profile={session.profile} size="md" />;
+}
+
+/** Someone's asking to be friends. A failed lookup just means no dot — it
+ *  mustn't take the whole app down with it. */
+async function RequestsDot() {
+  const incoming = await getFriendRequests()
+    .then((requests) => requests.incoming.length)
+    .catch(() => 0);
+  if (!incoming) return null;
+  return (
+    <>
+      <span aria-hidden="true" className="absolute -right-2 -top-0.5 size-2 rounded-full bg-accent" />
+      <span className="sr-only">, {incoming} asking to be friends</span>
+    </>
+  );
 }

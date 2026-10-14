@@ -11,6 +11,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { colors, friendlyError, levelForPoints, nextLevel, type Profile } from "@raven/shared";
 import { supabase } from "../lib/supabase";
+import { setDiscoverable } from "../lib/data";
 import { uploadPhotoBase64 } from "../lib/media";
 import { getHapticsEnabled, setHapticsEnabled } from "../lib/prefs";
 import { unregisterPushToken } from "../lib/push";
@@ -34,6 +35,7 @@ export function SettingsScreen({
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
   const [uploading, setUploading] = useState(false);
   const [haptics, setHaptics] = useState(getHapticsEnabled());
+  const [discoverable, setDiscoverableState] = useState(profile.discoverable);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const level = levelForPoints(profile.points);
@@ -133,6 +135,30 @@ export function SettingsScreen({
           onValueChange={(value) => {
             setHaptics(value);
             setHapticsEnabled(value);
+          }}
+          trackColor={{ true: colors.accent, false: colors.line }}
+        />
+      </View>
+
+      <View style={styles.toggleRow}>
+        <View style={styles.toggleText}>
+          <Text style={styles.toggleTitle}>Let people with your number find you</Text>
+          <Text style={styles.hint}>
+            They&apos;d see your name and photo when they check their contacts, and could ask to be
+            friends.
+          </Text>
+        </View>
+        <Switch
+          value={discoverable}
+          onValueChange={async (value) => {
+            setDiscoverableState(value); // instant; put back if the save fails
+            try {
+              await setDiscoverable(profile.id, value);
+              onProfileChanged();
+            } catch (e) {
+              setDiscoverableState(!value);
+              setError(e instanceof Error ? e.message : "Couldn't save that.");
+            }
           }}
           trackColor={{ true: colors.accent, false: colors.line }}
         />

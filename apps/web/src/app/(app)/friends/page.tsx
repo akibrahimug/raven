@@ -1,7 +1,8 @@
 import { Suspense } from "react";
 import { levelForPoints } from "@raven/shared";
-import { getFriends, getSessionProfile } from "@/lib/data";
+import { getFriendRequests, getFriends, getSessionProfile } from "@/lib/data";
 import { Avatar } from "@/components/Avatar";
+import { FriendRequests } from "@/components/FriendRequests";
 import { InviteCard } from "@/components/InviteCard";
 import { FriendRowsSkeleton } from "@/components/Skeleton";
 
@@ -10,20 +11,32 @@ export const dynamic = "force-dynamic";
 export default async function FriendsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ added?: string }>;
+  searchParams: Promise<{ asked?: string; friends?: string }>;
 }) {
-  const [session, { added }] = await Promise.all([getSessionProfile(), searchParams]);
+  const [session, { asked, friends: nowFriends }] = await Promise.all([
+    getSessionProfile(),
+    searchParams,
+  ]);
   if (!session?.profile) return null;
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/j/${session.profile.invite_code}`;
 
   return (
     <div className="flex flex-col gap-10 pt-4">
-      {added ? (
+      {asked ? (
         <p className="rounded-xl bg-going-wash px-4 py-3 text-sm font-medium text-going">
-          Friend added — your ravens reach them now.
+          Asked — you&apos;ll be friends as soon as they say yes.
         </p>
       ) : null}
+      {nowFriends ? (
+        <p className="rounded-xl bg-going-wash px-4 py-3 text-sm font-medium text-going">
+          You&apos;re friends now — your ravens reach each other.
+        </p>
+      ) : null}
+
+      <Suspense fallback={null}>
+        <Requests />
+      </Suspense>
 
       <InviteCard invite={{ url: inviteUrl, senderName: session.profile.display_name }} />
 
@@ -35,6 +48,12 @@ export default async function FriendsPage({
       </section>
     </div>
   );
+}
+
+/** Only takes up room when someone's asking, or you are. */
+async function Requests() {
+  const { incoming, outgoing } = await getFriendRequests();
+  return <FriendRequests incoming={incoming} outgoing={outgoing} />;
 }
 
 async function FriendList({ userId }: { userId: string }) {

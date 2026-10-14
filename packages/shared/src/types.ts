@@ -8,6 +8,8 @@ export interface Profile {
   invite_code: string;
   avatar_url: string | null;
   points: number;
+  /** Whether someone with your number can find you from their contacts. */
+  discoverable: boolean;
   created_at: string;
 }
 

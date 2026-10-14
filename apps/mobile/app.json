@@ -33,7 +33,13 @@
           "defaultChannel": "default"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Raven checks your contacts' numbers to show which friends are already here. The numbers aren't stored."
+        }
+      ]
     ]
   }
 }

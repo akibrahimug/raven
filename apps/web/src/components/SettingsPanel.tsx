@@ -2,6 +2,7 @@ import { levelForPoints, nextLevel, type Profile } from "@raven/shared";
 import { signOut, updateProfile } from "@/lib/actions";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
+import { DiscoverableToggle } from "@/components/DiscoverableToggle";
 import { Bone, LoadingRegion, Slab } from "@/components/Skeleton";
 
 /** Everything on /settings. Without `profile` it's the page's loading state:
@@ -46,6 +47,21 @@ export function SettingsPanel({ profile, error }: { profile?: Profile; error?: s
           <LoadingRegion label="Loading your name" className="mt-3 flex items-center gap-2">
             <Slab className="h-10 flex-1 rounded-xl" />
             <Bone className="h-10 w-16" />
+          </LoadingRegion>
+        )}
+      </section>
+
+      <section>
+        <h2 className="invitation text-xl">Finding you</h2>
+        {profile ? (
+          <DiscoverableToggle initial={profile.discoverable} />
+        ) : (
+          <LoadingRegion label="Loading" className="mt-3 flex items-start gap-3">
+            <div className="flex-1">
+              <Bone className="h-3.5 w-56" />
+              <Bone className="mt-2 h-3 w-64" />
+            </div>
+            <Bone className="h-6 w-10" />
           </LoadingRegion>
         )}
       </section>

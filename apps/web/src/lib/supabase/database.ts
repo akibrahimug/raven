@@ -130,6 +130,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          discoverable: boolean
           display_name: string
           id: string
           invite_code: string
@@ -138,6 +139,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          discoverable?: boolean
           display_name: string
           id: string
           invite_code?: string
@@ -146,6 +148,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          discoverable?: boolean
           display_name?: string
           id?: string
           invite_code?: string
@@ -276,6 +279,7 @@ export type Database = {
     Functions: {
       are_friends: { Args: { a: string; b: string }; Returns: boolean }
       can_see_profile: { Args: { target: string }; Returns: boolean }
+      answer_friend_request: { Args: { requester: string; accept: boolean }; Returns: undefined }
       delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined }
       get_invite_profile: {
         Args: { code: string }
@@ -285,10 +289,34 @@ export type Database = {
         }[]
       }
       is_raven_attending: { Args: { rid: string }; Returns: boolean }
+      match_contacts: {
+        Args: { phones: string[] }
+        Returns: {
+          phone: string
+          id: string
+          display_name: string
+          avatar_url: string | null
+          points: number
+          status: string
+        }[]
+      }
+      my_friend_requests: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          display_name: string
+          avatar_url: string | null
+          points: number
+          direction: string
+          created_at: string
+        }[]
+      }
       is_raven_recipient: { Args: { rid: string }; Returns: boolean }
       is_raven_sender: { Args: { rid: string }; Returns: boolean }
       raven_active: { Args: { rid: string }; Returns: boolean }
       redeem_invite: { Args: { code: string }; Returns: string }
+      request_friend: { Args: { target: string }; Returns: string }
+      withdraw_friend_request: { Args: { target: string }; Returns: undefined }
     }
     Enums: {
       rsvp_status: "pending" | "in" | "late" | "cant"

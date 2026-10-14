@@ -60,18 +60,69 @@ for (const [session, name] of [
   if (error && error.code !== "23505") throw new Error(`profile ${name}: ${error.message}`);
 }
 
-// Friendships via AK's invite link (Tom and Jess are NOT friends with each other)
+// Friendships via AK's invite link: opening it asks AK, who says yes to
+// both (Tom and Jess are NOT friends with each other).
 const { data: akProfile } = await ak.supabase
   .from("profiles")
   .select("invite_code")
   .eq("id", ak.user.id)
   .single();
 for (const session of [tom, jess]) {
-  const { error } = await session.supabase.rpc("redeem_invite", { code: akProfile.invite_code });
+  const { data: outcome, error } = await session.supabase.rpc("redeem_invite", {
+    code: akProfile.invite_code,
+  });
   if (error) throw new Error(`redeem_invite: ${error.message}`);
+  if (outcome !== "requested") throw new Error(`redeem_invite returned ${outcome}`);
+}
+const { data: beforeYes } = await ak.supabase.from("friendships").select("*");
+const { data: akRequests } = await ak.supabase.rpc("my_friend_requests");
+check(
+  beforeYes.length === 0 && akRequests.filter((r) => r.direction === "incoming").length === 2,
+  "an invite link asks to be friends — nobody's added until they say yes",
+);
+for (const session of [tom, jess]) {
+  const { error } = await ak.supabase.rpc("answer_friend_request", {
+    requester: session.user.id,
+    accept: true,
+  });
+  if (error) throw new Error(`answer_friend_request: ${error.message}`);
 }
 const { data: akFriendships } = await ak.supabase.from("friendships").select("*");
-check(akFriendships.length >= 2, "invite links created both friendships");
+check(akFriendships.length === 2, "saying yes makes you friends");
+
+// Declining is silent and final: Jess asks Tom, Tom says no. Jess still sees
+// it as asked and can't send it again; Tom never sees it again.
+await jess.supabase.rpc("request_friend", { target: tom.user.id });
+await tom.supabase.rpc("answer_friend_request", { requester: jess.user.id, accept: false });
+const { data: askedAgain } = await jess.supabase.rpc("request_friend", { target: tom.user.id });
+const { data: jessView } = await jess.supabase.rpc("my_friend_requests");
+const { data: tomView } = await tom.supabase.rpc("my_friend_requests");
+check(
+  askedAgain === "requested" &&
+    jessView.some((r) => r.direction === "outgoing" && r.id === tom.user.id) &&
+    !tomView.some((r) => r.id === jess.user.id),
+  "a declined request stays quiet and can't be sent again",
+);
+const { error: directReadError } = await tom.supabase.from("friend_requests").select("from_id");
+check(!!directReadError, "friend requests are only reachable through their functions");
+
+// Contacts: AK checks three numbers — Tom, Jess, and one nobody has.
+const { data: akMatches } = await ak.supabase.rpc("match_contacts", {
+  phones: ["+441632960002", "+441632960003", "+441632960099"],
+});
+check(
+  akMatches.length === 2 && akMatches.every((m) => m.status === "friends"),
+  "contacts show who's on Raven and where you stand with them",
+);
+// Jess switches off being found: Tom (not her friend) can't find her; AK can.
+await jess.supabase.from("profiles").update({ discoverable: false }).eq("id", jess.user.id);
+const { data: tomFindsJess } = await tom.supabase.rpc("match_contacts", { phones: ["+441632960003"] });
+const { data: akFindsJess } = await ak.supabase.rpc("match_contacts", { phones: ["+441632960003"] });
+check(
+  tomFindsJess.length === 0 && akFindsJess.length === 1,
+  "switching off being found hides you from everyone but friends",
+);
+await jess.supabase.from("profiles").update({ discoverable: true }).eq("id", jess.user.id);
 
 // AK sends a raven to Tom + Jess
 const { data: raven, error: ravenError } = await ak.supabase
@@ -298,6 +349,8 @@ const { data: leaverProfile } = await retry
   .select("invite_code")
   .single();
 await ak.supabase.rpc("redeem_invite", { code: leaverProfile.invite_code });
+const { data: mutual } = await retry.rpc("request_friend", { target: ak.user.id });
+check(mutual === "friends", "two people asking each other are friends straight away");
 const { data: leaverRaven } = await retry
   .from("ravens")
   .insert({

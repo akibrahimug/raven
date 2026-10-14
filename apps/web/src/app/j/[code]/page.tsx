@@ -61,7 +61,7 @@ export default async function InvitePage({
             type="submit"
             className="rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]"
           >
-            Add {inviter.display_name}
+            Ask to be friends
           </button>
         </form>
       ) : (

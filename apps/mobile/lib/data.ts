@@ -1,4 +1,13 @@
-import { friendlyError, type Profile, type Raven, type RavenRecipient, type RavenReply, type RsvpStatus } from "@raven/shared";
+import {
+  friendlyError,
+  type ContactMatch,
+  type FriendStatus,
+  type Profile,
+  type Raven,
+  type RavenRecipient,
+  type RavenReply,
+  type RsvpStatus,
+} from "@raven/shared";
 import { supabase } from "./supabase";
 
 /** Query strings mirror apps/web/src/lib/data.ts — keep both in sync. */
@@ -173,5 +182,64 @@ export async function deleteAccount(userId: string): Promise<void> {
     }
   }
   const { error } = await supabase.rpc("delete_my_account");
+  if (error) throw new Error(friendlyError(error));
+}
+
+/** Someone on the other end of a friend request. */
+export type RequestPerson = Pick<Profile, "id" | "display_name" | "avatar_url" | "points">;
+
+/** Requests waiting on you, and the ones you're waiting on — mirrors
+ *  getFriendRequests in apps/web/src/lib/data.ts (migration 20261014000013).
+ *  Outgoing never says whether they've been declined. */
+export async function fetchFriendRequests(): Promise<{
+  incoming: RequestPerson[];
+  outgoing: RequestPerson[];
+}> {
+  const { data, error } = await supabase.rpc("my_friend_requests");
+  if (error) throw new Error(friendlyError(error));
+  const rows = (data ?? []) as Array<RequestPerson & { direction: string }>;
+  const person = ({ id, display_name, avatar_url, points }: RequestPerson) => ({
+    id,
+    display_name,
+    avatar_url,
+    points,
+  });
+  return {
+    incoming: rows.filter((row) => row.direction === "incoming").map(person),
+    outgoing: rows.filter((row) => row.direction === "outgoing").map(person),
+  };
+}
+
+/** Asks someone to be friends; "friends" if they'd already asked you. */
+export async function requestFriend(targetId: string): Promise<FriendStatus> {
+  const { data, error } = await supabase.rpc("request_friend", { target: targetId });
+  if (error) throw new Error(friendlyError(error));
+  return data === "friends" ? "friends" : "requested";
+}
+
+export async function answerFriendRequest(requesterId: string, accept: boolean): Promise<void> {
+  const { error } = await supabase.rpc("answer_friend_request", { requester: requesterId, accept });
+  if (error) throw new Error(friendlyError(error));
+}
+
+export async function withdrawFriendRequest(targetId: string): Promise<void> {
+  const { error } = await supabase.rpc("withdraw_friend_request", { target: targetId });
+  if (error) throw new Error(friendlyError(error));
+}
+
+/** Which of these E.164 numbers are on Raven. The server takes 2,000 at a
+ *  time and keeps none of them. */
+export async function matchContacts(phones: string[]): Promise<ContactMatch[]> {
+  const matches: ContactMatch[] = [];
+  for (let i = 0; i < phones.length; i += 2000) {
+    const { data, error } = await supabase.rpc("match_contacts", { phones: phones.slice(i, i + 2000) });
+    if (error) throw new Error(friendlyError(error));
+    matches.push(...((data ?? []) as ContactMatch[]));
+  }
+  return matches;
+}
+
+export async function setDiscoverable(userId: string, discoverable: boolean): Promise<void> {
+  const { error } = await supabase.from("profiles").update({ discoverable }).eq("id", userId);
   if (error) throw new Error(friendlyError(error));
 }

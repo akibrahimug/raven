@@ -6,7 +6,8 @@ import * as Linking from "expo-linking";
 import type { Session } from "@supabase/supabase-js";
 import { colors, type AuthNotice, type Profile } from "@raven/shared";
 import { supabase } from "./lib/supabase";
-import { fetchFriends, fetchProfile } from "./lib/data";
+import { fetchFriendRequests, fetchFriends, fetchProfile } from "./lib/data";
+import { inviteUrlFor } from "./lib/invite";
 import { buzzArrival, loadPrefs } from "./lib/prefs";
 import { onNotificationTap, registerPushToken } from "./lib/push";
 import { Plane, displayText } from "./components/ui";
@@ -20,6 +21,7 @@ import { InboxScreen } from "./screens/InboxScreen";
 import { ComposeScreen } from "./screens/ComposeScreen";
 import { RavenScreen } from "./screens/RavenScreen";
 import { FriendsScreen } from "./screens/FriendsScreen";
+import { ContactsScreen } from "./screens/ContactsScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 
 type Route =
@@ -28,6 +30,7 @@ type Route =
   | { name: "compose" }
   | { name: "raven"; id: string }
   | { name: "friends" }
+  | { name: "contacts" }
   | { name: "settings" };
 
 /** Signed-out screens. A notice explains a hand-off between the two (see
@@ -51,6 +54,8 @@ function Root() {
   // every cold start flashed the onboarding screen at existing users.
   const [profileFor, setProfileFor] = useState<string | null>(null);
   const [friendCount, setFriendCount] = useState(0);
+  // People asking to be friends — a dot on Friends until they're answered.
+  const [askingCount, setAskingCount] = useState(0);
   const [route, setRoute] = useState<Route>({ name: "inbox" });
   const [refreshKey, setRefreshKey] = useState(0);
   const [authScreen, setAuthScreen] = useState<AuthScreen>({ name: "signup" });
@@ -114,6 +119,9 @@ function Root() {
       .finally(() => setProfileFor(userId));
     fetchFriends(userId)
       .then((friends) => setFriendCount(friends.length))
+      .catch(() => {});
+    fetchFriendRequests()
+      .then((requests) => setAskingCount(requests.incoming.length))
       .catch(() => {});
   }, [userId, refreshKey]);
 
@@ -245,8 +253,18 @@ function Root() {
     screen = (
       <FriendsScreen
         userId={userId}
-        inviteCode={profile.invite_code}
+        inviteUrl={inviteUrlFor(profile.invite_code)}
         onBack={() => setRoute({ name: "inbox" })}
+        onFindContacts={() => setRoute({ name: "contacts" })}
+        onChanged={() => setRefreshKey((k) => k + 1)}
+      />
+    );
+  } else if (route.name === "contacts") {
+    screen = (
+      <ContactsScreen
+        inviteUrl={inviteUrlFor(profile.invite_code)}
+        onBack={() => setRoute({ name: "friends" })}
+        onChanged={() => setRefreshKey((k) => k + 1)}
       />
     );
   } else if (route.name === "settings") {
@@ -273,6 +291,7 @@ function Root() {
             </Pressable>
             <Pressable onPress={() => setRoute({ name: "friends" })} hitSlop={8}>
               <Text style={styles.navLink}>Friends</Text>
+              {askingCount > 0 ? <View style={styles.dot} accessibilityLabel={`${askingCount} asking to be friends`} /> : null}
             </Pressable>
             <Pressable onPress={() => setRoute({ name: "settings" })} hitSlop={8}>
               <Avatar profile={profile} size={32} />
@@ -326,6 +345,15 @@ const styles = StyleSheet.create({
   wordmark: { fontSize: 20 },
   nav: { flexDirection: "row", alignItems: "center", gap: 16 },
   navLink: { fontSize: 14, fontWeight: "600", color: colors.inkSoft },
+  dot: {
+    position: "absolute",
+    top: -2,
+    right: -8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+  },
   fab: {
     position: "absolute",
     alignSelf: "center",

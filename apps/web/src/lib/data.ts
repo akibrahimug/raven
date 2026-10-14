@@ -113,6 +113,32 @@ export async function getFriendCount(): Promise<number> {
   return count ?? 0;
 }
 
+/** Someone on the other end of a friend request, as my_friend_requests
+ *  returns them — enough to show a face and a name. */
+export type RequestPerson = Pick<Profile, "id" | "display_name" | "avatar_url" | "points">;
+
+/** Requests waiting on you, and the ones you're waiting on (migration
+ *  20261014000013). Outgoing never says whether they've been declined. */
+export async function getFriendRequests(): Promise<{
+  incoming: RequestPerson[];
+  outgoing: RequestPerson[];
+}> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_friend_requests");
+  if (error) queryFailed("friend requests", error);
+  const rows = data ?? [];
+  const person = ({ id, display_name, avatar_url, points }: (typeof rows)[number]) => ({
+    id,
+    display_name,
+    avatar_url,
+    points,
+  });
+  return {
+    incoming: rows.filter((row) => row.direction === "incoming").map(person),
+    outgoing: rows.filter((row) => row.direction === "outgoing").map(person),
+  };
+}
+
 export async function getFriends(userId: string): Promise<Profile[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

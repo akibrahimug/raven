@@ -68,7 +68,8 @@ Not 07700 900xxx: the live server's test logins live in that range, and the
 database won't start a new account on one.
 
 To simulate two friends, sign up as one, grab your invite link from
-**Friends**, sign out, sign up as another and open the link. Or skip the
+**Friends**, sign out, sign up as another and open the link — that asks to be
+friends — then sign back in as the first and say yes. Or skip the
 manual setup entirely:
 
 ```sh
@@ -84,16 +85,33 @@ every account's **For you** tab has something to accept or decline immediately.
 node scripts/smoke.mjs
 ```
 
-Twenty-eight checks drive three users through sign-up → invite links → sending →
+Thirty-four checks drive three users through sign-up → invite links → sending →
 RSVPs → rewards → threads, asserting the privacy and points rules hold
 (who's-in visible, declines and pending invisible, threads sender+attending
 only, no ravens to non-friends, points awarded only for accepted RSVPs and
 never self-assignable) along with the sign-up rules (no phone-only sign-ups,
 no profile before a verified number, one account per number, the latest code
-request for a number wins, no new accounts on the test range) and that deleting
-an account removes all of it. Run against a clean database — `supabase db reset`
+request for a number wins, no new accounts on the test range), the friend
+rules (links and Add only ask, a yes makes friends, asking each other is
+instant, declines stay quiet and final, contact matching respects the off
+switch) and that deleting an account removes all of it. Run against a clean database — `supabase db reset`
 first if you've already run `seed-dev.mjs`, since it befriends everyone and
 will trip the "declined/non-friend" checks.
+
+## Friends — nobody's in until you say yes
+
+Every raven flies to all your friends, so becoming friends always takes a yes
+from the person being asked. Opening someone's invite link asks them; on the
+phone, **Friends → Find friends in your contacts** shows which of your contacts
+are already on Raven, with **Add** to ask them and **Invite** to text a link to
+everyone else. Two people who ask each other are friends straight away. A
+declined request stays quiet (it still looks asked) and can't be sent again.
+
+Contacts are checked against Raven's verified numbers and never stored, and
+the lookups are rationed (2,000 numbers a call, 30 calls an hour). **Settings →
+Let people with your number find you** switches it off: then only existing
+friends see you there. Browsers can't read contacts, so the web app has the
+invite link and the requests, not the contact list.
 
 ## Rewards — who you are to your friends
 

@@ -60,16 +60,12 @@ for (const spec of USERS) {
   console.log(`signed in ${spec.name}`);
 }
 
-// Everyone befriends everyone.
-for (const a of sessions) {
-  const { data } = await a.supabase
-    .from("profiles")
-    .select("invite_code")
-    .eq("id", a.user.id)
-    .single();
-  for (const b of sessions) {
-    if (b === a) continue;
-    await b.supabase.rpc("redeem_invite", { code: data.invite_code });
+// Everyone befriends everyone: two people asking each other are friends
+// straight away (migration 20261014000013). Re-runs are no-ops.
+for (const [i, a] of sessions.entries()) {
+  for (const b of sessions.slice(i + 1)) {
+    await a.supabase.rpc("request_friend", { target: b.user.id });
+    await b.supabase.rpc("request_friend", { target: a.user.id });
   }
 }
 console.log("all five are friends now");

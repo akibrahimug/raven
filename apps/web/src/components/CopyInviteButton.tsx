@@ -1,12 +1,14 @@
 "use client";
 
+import { inviteMessage } from "@raven/shared";
+
 import { useState } from "react";
 
 export function CopyInviteButton({ url, senderName }: { url: string; senderName: string }) {
   const [copied, setCopied] = useState(false);
 
   async function share() {
-    const text = `Join me on Raven — I'll send you one when I'm up to something. ${url}`;
+    const text = inviteMessage(url);
     if (navigator.share) {
       try {
         await navigator.share({ text });

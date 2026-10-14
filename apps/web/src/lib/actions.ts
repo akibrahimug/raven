@@ -129,14 +129,44 @@ export async function recallRaven(ravenId: string) {
   redirect("/");
 }
 
+/** Opening someone's invite link asks them to be friends — you're friends
+ *  straight away only if they'd already asked you (migration 20261014000013). */
 export async function redeemInvite(code: string): Promise<void> {
   const { supabase } = await requireUser();
-  const { error } = await supabase.rpc("redeem_invite", { code });
+  const { data, error } = await supabase.rpc("redeem_invite", { code });
   if (error) {
     redirect(`/j/${code}?error=${encodeURIComponent(friendlyError(error))}`);
   }
   revalidatePath("/friends");
-  redirect("/friends?added=1");
+  redirect(data === "friends" ? "/friends?friends=1" : "/friends?asked=1");
+}
+
+export async function answerFriendRequest(requesterId: string, accept: boolean) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("answer_friend_request", {
+    requester: requesterId,
+    accept,
+  });
+  if (error) return { error: friendlyError(error) };
+  revalidatePath("/friends");
+  revalidatePath("/");
+  return {};
+}
+
+export async function withdrawFriendRequest(targetId: string) {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("withdraw_friend_request", { target: targetId });
+  if (error) return { error: friendlyError(error) };
+  revalidatePath("/friends");
+  return {};
+}
+
+export async function setDiscoverable(discoverable: boolean) {
+  const { supabase, user } = await requireUser();
+  const { error } = await supabase.from("profiles").update({ discoverable }).eq("id", user.id);
+  if (error) return { error: friendlyError(error) };
+  revalidatePath("/settings");
+  return {};
 }
 
 export async function updateProfile(formData: FormData) {

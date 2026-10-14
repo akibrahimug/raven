@@ -8,8 +8,9 @@ export function InviteCard({ invite }: { invite?: { url: string; senderName: str
     <section className="rounded-2xl border border-line bg-raised p-5">
       <h2 className="invitation text-xl">Your invite link</h2>
       <p className="mt-1.5 text-sm text-ink-soft">
-        Every raven you send flies to everyone here — so only invite people you&apos;d
-        actually want turning up.
+        Anyone who opens it asks to be your friend, and you say yes or no. Every raven
+        you send flies to all your friends — so only say yes to people you&apos;d actually
+        want turning up.
       </p>
       {invite ? (
         <>
