@@ -10,11 +10,20 @@ import {
 import { colors, friendlyError, isTestNumber, normalisePhone } from "@raven/shared";
 import { supabase } from "../lib/supabase";
 import { Plane, displayText } from "../components/ui";
+import { DeleteAccountLink } from "../components/DeleteAccountLink";
 
 /** Step two of signing up, after Google or the email link — mirrors the web
  *  /phone page. The number is what this account logs back in with, so
  *  App.tsx shows nothing else until it's verified. */
-export function PhoneScreen({ onNumberTaken }: { onNumberTaken: (phone: string) => void }) {
+export function PhoneScreen({
+  userId,
+  onNumberTaken,
+  onDeleted,
+}: {
+  userId: string;
+  onNumberTaken: (phone: string) => void;
+  onDeleted: () => void;
+}) {
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
   const [step, setStep] = useState<"phone" | "code">("phone");
@@ -128,6 +137,7 @@ export function PhoneScreen({ onNumberTaken }: { onNumberTaken: (phone: string) 
       <Pressable onPress={() => supabase.auth.signOut()} style={styles.signOut}>
         <Text style={styles.signOutLabel}>Not you? Sign out</Text>
       </Pressable>
+      <DeleteAccountLink userId={userId} onDeleted={onDeleted} style={styles.signOut} />
     </KeyboardAvoidingView>
   );
 }

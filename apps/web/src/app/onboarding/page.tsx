@@ -3,6 +3,7 @@ import { completeOnboarding, signOut } from "@/lib/actions";
 import { getSessionProfile } from "@/lib/data";
 import { safeNext } from "@/lib/redirect";
 import { RavenMark } from "@/components/RavenMark";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 
 export default async function OnboardingPage({
   searchParams,
@@ -59,6 +60,11 @@ export default async function OnboardingPage({
           Not you? Sign out
         </button>
       </form>
+      {/* Changed your mind partway through? Settings is out of reach until
+          sign-up finishes, so the way out is here too. */}
+      <div className="mt-2 flex flex-col items-center">
+        <DeleteAccountButton />
+      </div>
     </main>
   );
 }

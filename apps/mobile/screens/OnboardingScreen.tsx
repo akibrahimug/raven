@@ -12,17 +12,20 @@ import { colors } from "@raven/shared";
 import { createProfile } from "../lib/data";
 import { supabase } from "../lib/supabase";
 import { Plane, displayText } from "../components/ui";
+import { DeleteAccountLink } from "../components/DeleteAccountLink";
 
 export function OnboardingScreen({
   userId,
   hint,
   onDone,
+  onDeleted,
 }: {
   userId: string;
   /** Name/photo from a Google sign-in — a starting point to confirm, not
    *  written until "Done" is pressed. Undefined for phone/email sign-ins. */
   hint?: { displayName: string | null; avatarUrl: string | null } | null;
   onDone: () => void;
+  onDeleted: () => void;
 }) {
   const [name, setName] = useState(hint?.displayName ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,7 @@ export function OnboardingScreen({
       <Pressable onPress={() => supabase.auth.signOut()} style={styles.signOut}>
         <Text style={styles.signOutLabel}>Not you? Sign out</Text>
       </Pressable>
+      <DeleteAccountLink userId={userId} onDeleted={onDeleted} style={styles.signOut} />
     </KeyboardAvoidingView>
   );
 }

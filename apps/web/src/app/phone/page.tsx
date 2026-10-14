@@ -3,6 +3,7 @@ import { signOut } from "@/lib/actions";
 import { getSessionProfile } from "@/lib/data";
 import { safeNext } from "@/lib/redirect";
 import { RavenMark } from "@/components/RavenMark";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { PhoneForm } from "@/components/PhoneForm";
 
 /** Step two of signing up, after Google or the email link: the number is
@@ -33,6 +34,11 @@ export default async function PhonePage({
           Not you? Sign out
         </button>
       </form>
+      {/* Changed your mind partway through? Settings is out of reach until
+          sign-up finishes, so the way out is here too. */}
+      <div className="mt-2 flex flex-col items-center">
+        <DeleteAccountButton />
+      </div>
     </main>
   );
 }

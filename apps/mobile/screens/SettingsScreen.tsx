@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,12 +11,12 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { colors, friendlyError, levelForPoints, nextLevel, type Profile } from "@raven/shared";
 import { supabase } from "../lib/supabase";
-import { deleteAccount } from "../lib/data";
 import { uploadPhotoBase64 } from "../lib/media";
 import { getHapticsEnabled, setHapticsEnabled } from "../lib/prefs";
 import { unregisterPushToken } from "../lib/push";
 import { Avatar } from "../components/Avatar";
 import { displayText } from "../components/ui";
+import { DeleteAccountLink } from "../components/DeleteAccountLink";
 
 export function SettingsScreen({
   profile,
@@ -37,36 +36,8 @@ export function SettingsScreen({
   const [haptics, setHaptics] = useState(getHapticsEnabled());
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const level = levelForPoints(profile.points);
   const next = nextLevel(profile.points);
-
-  // Can't be undone, so the system dialog spells out what goes first.
-  function confirmDelete() {
-    Alert.alert(
-      "Delete your account?",
-      "Your profile, friends, ravens, replies and photos go for good. This can't be undone.",
-      [
-        { text: "Keep it", style: "cancel" },
-        {
-          text: "Delete everything",
-          style: "destructive",
-          onPress: async () => {
-            setDeleting(true);
-            setDeleteError(null);
-            try {
-              await deleteAccount(profile.id);
-              onDeleted();
-            } catch (e) {
-              setDeleteError(e instanceof Error ? e.message : "Could not delete your account.");
-              setDeleting(false);
-            }
-          },
-        },
-      ],
-    );
-  }
 
   async function changePhoto() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -177,10 +148,7 @@ export function SettingsScreen({
         <Text style={styles.signOutLabel}>Sign out</Text>
       </Pressable>
 
-      <Pressable onPress={confirmDelete} disabled={deleting} style={styles.deleteAccount}>
-        <Text style={styles.signOutLabel}>{deleting ? "Deleting…" : "Delete account"}</Text>
-      </Pressable>
-      {deleteError ? <Text style={styles.error}>{deleteError}</Text> : null}
+      <DeleteAccountLink userId={profile.id} onDeleted={onDeleted} style={styles.deleteAccount} />
     </ScrollView>
   );
 }

@@ -157,6 +157,14 @@ function Root() {
     return <View style={styles.boot} />;
   }
 
+  // Settings, or the sign-up steps before it, deleted the account. Local
+  // sign-out only: the server-side session went with the account. The
+  // sign-out listener resets to signup first, so the notice lands after.
+  async function handleDeleted() {
+    await supabase.auth.signOut({ scope: "local" });
+    setAuthScreen({ name: "signup", notice: "deleted" });
+  }
+
   let screen: React.ReactNode;
   if (!session || !userId) {
     screen =
@@ -177,6 +185,8 @@ function Root() {
     // without a verified one goes no further.
     screen = (
       <PhoneScreen
+        userId={userId}
+        onDeleted={handleDeleted}
         onNumberTaken={async (phone) => {
           // That number already has an account: drop this half-made
           // sign-up and log in with it instead. signOut's listener resets
@@ -207,6 +217,7 @@ function Root() {
         userId={userId}
         hint={oauthHint}
         onDone={() => setRefreshKey((k) => k + 1)}
+        onDeleted={handleDeleted}
       />
     );
   } else if (route.name === "compose") {
@@ -244,12 +255,7 @@ function Root() {
         profile={profile}
         onBack={() => setRoute({ name: "inbox" })}
         onProfileChanged={() => setRefreshKey((k) => k + 1)}
-        onDeleted={async () => {
-          // Local only: the server-side session went with the account. The
-          // sign-out listener resets to signup first, so the notice lands after.
-          await supabase.auth.signOut({ scope: "local" });
-          setAuthScreen({ name: "signup", notice: "deleted" });
-        }}
+        onDeleted={handleDeleted}
       />
     );
   } else {

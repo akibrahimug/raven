@@ -169,7 +169,13 @@ export async function updateAvatarUrl(avatarUrl: string) {
  *  browser — they sit in Storage, outside the database's cascades, and the
  *  database refuses while any are left. */
 export async function deleteAccount(): Promise<{ error: string }> {
-  const { supabase } = await requireUser();
+  // Not requireUser(): a sign-up that stopped at the phone step has no
+  // verified number yet, and still gets to delete itself.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
   const { error } = await supabase.rpc("delete_my_account");
   if (error) return { error: friendlyError(error) };
   // Local only: the server-side session went with the account, so there's
