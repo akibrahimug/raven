@@ -276,6 +276,7 @@ export type Database = {
     Functions: {
       are_friends: { Args: { a: string; b: string }; Returns: boolean }
       can_see_profile: { Args: { target: string }; Returns: boolean }
+      delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined }
       get_invite_profile: {
         Args: { code: string }
         Returns: {

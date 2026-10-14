@@ -138,3 +138,23 @@ export async function sendRaven(
   }
   return raven.id;
 }
+
+/** Removes the account and everything in it — mirrors deleteAccount in
+ *  apps/web/src/lib/actions.ts (and migration 20261014000011). Photos go
+ *  first: they sit in Storage, outside the database's cascades, and this
+ *  session is what's allowed to delete them. */
+export async function deleteAccount(userId: string): Promise<void> {
+  const bucket = supabase.storage.from("raven-media");
+  for (;;) {
+    const { data: files, error } = await bucket.list(userId, { limit: 100 });
+    if (error) throw new Error(friendlyError(error));
+    if (!files.length) break;
+    const { data: removed, error: removeError } = await bucket.remove(
+      files.map((file) => `${userId}/${file.name}`),
+    );
+    if (removeError) throw new Error(friendlyError(removeError));
+    if (removed.length < files.length) throw new Error("Couldn't delete your photos — try again.");
+  }
+  const { error } = await supabase.rpc("delete_my_account");
+  if (error) throw new Error(friendlyError(error));
+}

@@ -8,13 +8,14 @@ export function isTestNumber(e164: string): boolean {
   return e164.startsWith("+447700900");
 }
 
-/** Shown after a hand-off between logging in and signing up. Logging in
+/** Shown after a hand-off between logging in and signing up — logging in
  *  never makes an account (signing up starts with email, then the number),
- *  and a number belongs to exactly one account. */
+ *  and a number belongs to exactly one account — or after deleting one. */
 export const AUTH_NOTICES = {
   "no-account":
     "There's no Raven account with that number yet. Sign up below — you'll add your number right after.",
   taken: "That number already has a Raven account — log in with it here.",
+  deleted: "Your account has been deleted, along with everything in it.",
 } as const;
 
 export type AuthNotice = keyof typeof AUTH_NOTICES;

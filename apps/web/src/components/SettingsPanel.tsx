@@ -1,6 +1,7 @@
 import { levelForPoints, nextLevel, type Profile } from "@raven/shared";
 import { signOut, updateProfile } from "@/lib/actions";
 import { AvatarUploader } from "@/components/AvatarUploader";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { Bone, LoadingRegion, Slab } from "@/components/Skeleton";
 
 /** Everything on /settings. Without `profile` it's the page's loading state:
@@ -49,11 +50,14 @@ export function SettingsPanel({ profile, error }: { profile?: Profile; error?: s
         )}
       </section>
 
-      <form action={signOut} className="pb-4">
-        <button type="submit" className="text-sm text-ink-faint underline-offset-2 hover:underline">
-          Sign out
-        </button>
-      </form>
+      <div className="flex flex-col items-start gap-4 pb-4">
+        <form action={signOut}>
+          <button type="submit" className="text-sm text-ink-faint underline-offset-2 hover:underline">
+            Sign out
+          </button>
+        </form>
+        <DeleteAccountButton />
+      </div>
     </div>
   );
 }

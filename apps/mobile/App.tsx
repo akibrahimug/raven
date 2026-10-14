@@ -244,6 +244,12 @@ function Root() {
         profile={profile}
         onBack={() => setRoute({ name: "inbox" })}
         onProfileChanged={() => setRefreshKey((k) => k + 1)}
+        onDeleted={async () => {
+          // Local only: the server-side session went with the account. The
+          // sign-out listener resets to signup first, so the notice lands after.
+          await supabase.auth.signOut({ scope: "local" });
+          setAuthScreen({ name: "signup", notice: "deleted" });
+        }}
       />
     );
   } else {

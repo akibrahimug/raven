@@ -35,8 +35,10 @@ function SignupForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/";
   const urlError = searchParams.get("error");
-  // Arrived from /login with a number no account has.
-  const notice = searchParams.get("notice") === "no-account" ? AUTH_NOTICES["no-account"] : null;
+  // Arrived from /login with a number no account has, or from deleting one.
+  const noticeKey = searchParams.get("notice");
+  const notice =
+    noticeKey === "no-account" || noticeKey === "deleted" ? AUTH_NOTICES[noticeKey] : null;
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busyGoogle, setBusyGoogle] = useState(false);

@@ -84,13 +84,14 @@ every account's **For you** tab has something to accept or decline immediately.
 node scripts/smoke.mjs
 ```
 
-Twenty-four checks drive three users through sign-up → invite links → sending →
+Twenty-seven checks drive three users through sign-up → invite links → sending →
 RSVPs → rewards → threads, asserting the privacy and points rules hold
 (who's-in visible, declines and pending invisible, threads sender+attending
 only, no ravens to non-friends, points awarded only for accepted RSVPs and
 never self-assignable) along with the sign-up rules (no phone-only sign-ups,
 no profile before a verified number, one account per number, the latest code
-request for a number wins, no new accounts on the test range). Run against a clean database — `supabase db reset`
+request for a number wins, no new accounts on the test range) and that deleting
+an account removes all of it. Run against a clean database — `supabase db reset`
 first if you've already run `seed-dev.mjs`, since it befriends everyone and
 will trip the "declined/non-friend" checks.
 
@@ -103,7 +104,9 @@ the inbox, the friends list, the attendee list. Points are awarded by a
 database trigger, never self-assignable (enforced via column-level grants).
 
 Avatars are a real photo you upload in **Settings** (tap your picture), stored
-in the `raven-media` Supabase Storage bucket. No photo yet? You get your
+in the `raven-media` Supabase Storage bucket. **Settings** is also where you delete
+your account: it takes everything with it — profile, friendships, the ravens you
+sent, your replies and RSVPs, your photos, and the login itself. No photo yet? You get your
 initials in a ring instead — never a placeholder bird.
 
 ## History

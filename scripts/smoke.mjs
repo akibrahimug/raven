@@ -258,10 +258,8 @@ const abandoned = client();
 await abandoned.auth.signUp({ email: `abandoned-${Date.now()}@raven.test`, password: PASSWORD });
 await abandoned.auth.updateUser({ phone: "+441632960004" });
 const retry = client();
-const { data: retrySignUp } = await retry.auth.signUp({
-  email: `retry-${Date.now()}@raven.test`,
-  password: PASSWORD,
-});
+const retryEmail = `retry-${Date.now()}@raven.test`;
+const { data: retrySignUp } = await retry.auth.signUp({ email: retryEmail, password: PASSWORD });
 await retry.auth.updateUser({ phone: "+441632960004" });
 const { data: retryVerified } = await retry.auth.verifyOtp({
   phone: "+441632960004",
@@ -289,6 +287,54 @@ check(
   !testRangeAddError && !testRangeCodeError && !!testRangeProfileError,
   "a 07700 900xxx test number can't start an account",
 );
+
+// Deleting an account takes everything with it (migration 20261014000011):
+// profile, friendships, the ravens it sent, its photos, and the login itself.
+// "retry" above finished verifying its number, so it can have a profile.
+const leaverId = retrySignUp.user.id;
+const { data: leaverProfile } = await retry
+  .from("profiles")
+  .insert({ id: leaverId, display_name: "Leaver" })
+  .select("invite_code")
+  .single();
+await ak.supabase.rpc("redeem_invite", { code: leaverProfile.invite_code });
+const { data: leaverRaven } = await retry
+  .from("ravens")
+  .insert({
+    sender_id: leaverId,
+    body: "Last one out.",
+    expires_at: new Date(Date.now() + 3600_000).toISOString(),
+  })
+  .select("id")
+  .single();
+await retry.from("raven_recipients").insert({ raven_id: leaverRaven.id, recipient_id: ak.user.id });
+const media = retry.storage.from("raven-media");
+await media.upload(`${leaverId}/smoke.png`, new Uint8Array([137, 80, 78, 71]), {
+  contentType: "image/png",
+});
+const { data: akSawRaven } = await ak.supabase.from("ravens").select("id").eq("id", leaverRaven.id);
+
+// The same steps as Settings → Delete account: photos first, then the rest.
+const { data: leaverFiles } = await media.list(leaverId);
+await media.remove(leaverFiles.map((file) => `${leaverId}/${file.name}`));
+const { error: deleteError } = await retry.rpc("delete_my_account");
+
+const { data: akSeesRaven } = await ak.supabase.from("ravens").select("id").eq("id", leaverRaven.id);
+const { data: akFriendsAfter } = await ak.supabase.from("friendships").select("user_a, user_b");
+check(
+  !deleteError &&
+    akSawRaven.length === 1 &&
+    akSeesRaven.length === 0 &&
+    !akFriendsAfter.some((f) => f.user_a === leaverId || f.user_b === leaverId),
+  "deleting an account removes its profile, friendships and ravens",
+);
+const { data: filesAfter } = await client().storage.from("raven-media").list(leaverId);
+check(leaverFiles.length === 1 && filesAfter.length === 0, "deleting an account removes its photos");
+const { error: comebackError } = await client().auth.signInWithPassword({
+  email: retryEmail,
+  password: PASSWORD,
+});
+check(!!comebackError, "a deleted account can't sign back in");
 
 console.log(failed ? "\nSMOKE FAILED" : "\nALL CHECKS PASSED");
 process.exit(failed ? 1 : 0);
