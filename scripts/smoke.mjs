@@ -314,9 +314,24 @@ await media.upload(`${leaverId}/smoke.png`, new Uint8Array([137, 80, 78, 71]), {
 });
 const { data: akSawRaven } = await ak.supabase.from("ravens").select("id").eq("id", leaverRaven.id);
 
-// The same steps as Settings → Delete account: photos first, then the rest.
+// The database won't delete an account whose photos are still in Storage —
+// they're outside its cascades and would be stranded.
+const { error: tooSoonError } = await retry.rpc("delete_my_account");
+const { data: stillThere } = await ak.supabase.from("profiles").select("id").eq("id", leaverId);
+check(!!tooSoonError && stillThere.length === 1, "an account isn't deleted while its photos remain");
+
+// The same steps as Settings → Delete account: photos first, one request per
+// file (the live server's Oracle storage rejects bulk deletes), then the rest.
 const { data: leaverFiles } = await media.list(leaverId);
-await media.remove(leaverFiles.map((file) => `${leaverId}/${file.name}`));
+const {
+  data: { session: leaverSession },
+} = await retry.auth.getSession();
+for (const file of leaverFiles) {
+  await fetch(`${URL}/storage/v1/object/raven-media/${leaverId}/${encodeURIComponent(file.name)}`, {
+    method: "DELETE",
+    headers: { apikey: ANON, Authorization: `Bearer ${leaverSession.access_token}` },
+  });
+}
 const { error: deleteError } = await retry.rpc("delete_my_account");
 
 const { data: akSeesRaven } = await ak.supabase.from("ravens").select("id").eq("id", leaverRaven.id);

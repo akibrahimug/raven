@@ -84,7 +84,7 @@ every account's **For you** tab has something to accept or decline immediately.
 node scripts/smoke.mjs
 ```
 
-Twenty-seven checks drive three users through sign-up → invite links → sending →
+Twenty-eight checks drive three users through sign-up → invite links → sending →
 RSVPs → rewards → threads, asserting the privacy and points rules hold
 (who's-in visible, declines and pending invisible, threads sender+attending
 only, no ravens to non-friends, points awarded only for accepted RSVPs and

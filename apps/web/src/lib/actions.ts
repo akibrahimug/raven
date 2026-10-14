@@ -164,26 +164,12 @@ export async function updateAvatarUrl(avatarUrl: string) {
   return {};
 }
 
-/** Removes the account and everything in it (migration 20261014000011).
- *  Photos go first: they sit in Storage, outside the database's cascades,
- *  and this session is what's allowed to delete them — once the account is
- *  gone, nothing in the app could. */
+/** Removes the account and everything in it (migrations 20261014000011
+ *  and …12). DeleteAccountButton clears the user's photos first, from the
+ *  browser — they sit in Storage, outside the database's cascades, and the
+ *  database refuses while any are left. */
 export async function deleteAccount(): Promise<{ error: string }> {
-  const { supabase, user } = await requireUser();
-  const bucket = supabase.storage.from("raven-media");
-  // Every upload lives at <user id>/<uuid>.<ext>; clear it a page at a time.
-  for (;;) {
-    const { data: files, error } = await bucket.list(user.id, { limit: 100 });
-    if (error) return { error: friendlyError(error) };
-    if (!files.length) break;
-    const { data: removed, error: removeError } = await bucket.remove(
-      files.map((file) => `${user.id}/${file.name}`),
-    );
-    if (removeError) return { error: friendlyError(removeError) };
-    // Storage reports what it actually deleted; anything less means the next
-    // page would list the same files forever.
-    if (removed.length < files.length) return { error: "Couldn't delete your photos — try again." };
-  }
+  const { supabase } = await requireUser();
   const { error } = await supabase.rpc("delete_my_account");
   if (error) return { error: friendlyError(error) };
   // Local only: the server-side session went with the account, so there's

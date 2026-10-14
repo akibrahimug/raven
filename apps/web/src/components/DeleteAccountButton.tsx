@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { deleteAccount } from "@/lib/actions";
+import { deleteOwnPhotos } from "@/lib/storage";
 import { SpinnerIcon } from "@/components/icons";
 
 /** Deleting your account can't be undone — say exactly what goes, then ask. */
@@ -34,6 +35,15 @@ export function DeleteAccountButton() {
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
+              setError(null);
+              try {
+                // Photos first: the database won't delete an account that
+                // still has some (they live outside its cascades).
+                await deleteOwnPhotos();
+              } catch (photoError) {
+                setError(photoError instanceof Error ? photoError.message : "Couldn't delete your photos — try again.");
+                return;
+              }
               // Only comes back on failure — success redirects to /signup.
               const result = await deleteAccount();
               if (result?.error) setError(result.error);

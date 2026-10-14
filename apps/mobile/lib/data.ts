@@ -139,21 +139,38 @@ export async function sendRaven(
   return raven.id;
 }
 
-/** Removes the account and everything in it — mirrors deleteAccount in
- *  apps/web/src/lib/actions.ts (and migration 20261014000011). Photos go
- *  first: they sit in Storage, outside the database's cascades, and this
- *  session is what's allowed to delete them. */
+/** Removes the account and everything in it — mirrors the web's
+ *  deleteOwnPhotos + deleteAccount (apps/web/src/lib/storage.ts, actions.ts)
+ *  and migrations 20261014000011/12. Photos go first: they sit in Storage,
+ *  outside the database's cascades, and the database refuses while any are
+ *  left. One request per file — the live server's Oracle Object Storage
+ *  rejects the bulk delete supabase-js sends ("Missing required header:
+ *  Content-MD5…") — a few at a time. */
 export async function deleteAccount(userId: string): Promise<void> {
-  const bucket = supabase.storage.from("raven-media");
-  for (;;) {
-    const { data: files, error } = await bucket.list(userId, { limit: 100 });
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error("You've been signed out — sign in again.");
+  const base = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/raven-media/${userId}`;
+  const headers = {
+    apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
+    Authorization: `Bearer ${session.access_token}`,
+  };
+  for (let page = 0; ; page++) {
+    if (page === 100) throw new Error("Couldn't delete your photos — try again.");
+    const { data: files, error } = await supabase.storage.from("raven-media").list(userId, { limit: 100 });
     if (error) throw new Error(friendlyError(error));
     if (!files.length) break;
-    const { data: removed, error: removeError } = await bucket.remove(
-      files.map((file) => `${userId}/${file.name}`),
-    );
-    if (removeError) throw new Error(friendlyError(removeError));
-    if (removed.length < files.length) throw new Error("Couldn't delete your photos — try again.");
+    for (let i = 0; i < files.length; i += 5) {
+      const responses = await Promise.all(
+        files
+          .slice(i, i + 5)
+          .map((file) => fetch(`${base}/${encodeURIComponent(file.name)}`, { method: "DELETE", headers })),
+      );
+      if (responses.some((response) => !response.ok)) {
+        throw new Error("Couldn't delete your photos — try again.");
+      }
+    }
   }
   const { error } = await supabase.rpc("delete_my_account");
   if (error) throw new Error(friendlyError(error));
