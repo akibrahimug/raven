@@ -1,5 +1,7 @@
 import { levelForPoints, nextLevel, type Profile } from "@raven/shared";
-import { signOut, updateProfile } from "@/lib/actions";
+import { updateProfile } from "@/lib/actions";
+import { SignOutButton } from "@/components/SignOutButton";
+import { SubmitButton } from "@/components/Busy";
 import { AvatarUploader } from "@/components/AvatarUploader";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { DiscoverableToggle } from "@/components/DiscoverableToggle";
@@ -36,12 +38,9 @@ export function SettingsPanel({ profile, error }: { profile?: Profile; error?: s
               required
               className="min-w-0 flex-1 rounded-xl border border-line bg-raised px-4 py-2.5 text-sm focus:border-accent focus:outline-none"
             />
-            <button
-              type="submit"
-              className="rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper"
-            >
+            <SubmitButton className="rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper">
               Save
-            </button>
+            </SubmitButton>
           </form>
         ) : (
           <LoadingRegion label="Loading your name" className="mt-3 flex items-center gap-2">
@@ -67,11 +66,7 @@ export function SettingsPanel({ profile, error }: { profile?: Profile; error?: s
       </section>
 
       <div className="flex flex-col items-start gap-4 pb-4">
-        <form action={signOut}>
-          <button type="submit" className="text-sm text-ink-faint underline-offset-2 hover:underline">
-            Sign out
-          </button>
-        </form>
+        <SignOutButton />
         <DeleteAccountButton />
       </div>
     </div>

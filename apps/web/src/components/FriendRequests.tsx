@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import type { RequestPerson } from "@/lib/data";
 import { answerFriendRequest, withdrawFriendRequest } from "@/lib/actions";
 import { Avatar } from "@/components/Avatar";
-import { SpinnerIcon } from "@/components/icons";
+import { Busy } from "@/components/Busy";
 
 /** People asking to be your friend, and the people you've asked. Nobody's
  *  ravens reach anyone until the person asked says yes. */
@@ -79,7 +79,7 @@ function IncomingRow({ person, onDone }: { person: RequestPerson; onDone: () => 
           onClick={() => answer(false)}
           className="text-sm text-ink-faint hover:text-ink disabled:opacity-50"
         >
-          Not now
+          <Busy pending={answering === "no"}>Not now</Busy>
         </button>
         <button
           type="button"
@@ -87,8 +87,7 @@ function IncomingRow({ person, onDone }: { person: RequestPerson; onDone: () => 
           onClick={() => answer(true)}
           className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-60"
         >
-          {answering === "yes" ? <SpinnerIcon className="size-3.5 animate-spin" /> : null}
-          {answering === "yes" ? "Adding…" : "Accept"}
+          <Busy pending={answering === "yes"}>Accept</Busy>
         </button>
       </div>
       {error ? <p className="text-xs text-late-amber">{error}</p> : null}
@@ -118,8 +117,7 @@ function OutgoingRow({ person, onDone }: { person: RequestPerson; onDone: () => 
           }
           className="flex items-center gap-1.5 text-sm text-ink-faint underline-offset-2 hover:underline disabled:opacity-50"
         >
-          {pending ? <SpinnerIcon className="size-3.5 animate-spin" /> : null}
-          {pending ? "Taking back…" : "Take back"}
+          <Busy pending={pending}>Take back</Busy>
         </button>
       </div>
       {error ? <p className="text-xs text-late-amber">{error}</p> : null}

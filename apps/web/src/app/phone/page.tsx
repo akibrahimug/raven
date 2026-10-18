@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { signOut } from "@/lib/actions";
+import { SignOutButton } from "@/components/SignOutButton";
 import { getSessionProfile } from "@/lib/data";
 import { safeNext } from "@/lib/redirect";
 import { RavenMark } from "@/components/RavenMark";
@@ -29,11 +29,7 @@ export default async function PhonePage({
         It&apos;s how you log in to Raven. We&apos;ll text you a code to check it&apos;s yours.
       </p>
       <PhoneForm next={next} hasProfile={Boolean(session.profile)} />
-      <form action={signOut} className="mt-4 text-center">
-        <button type="submit" className="text-sm text-ink-faint underline-offset-2 hover:underline">
-          Not you? Sign out
-        </button>
-      </form>
+      <SignOutButton label="Not you? Sign out" className="mt-4 text-center" />
       {/* Changed your mind partway through? Settings is out of reach until
           sign-up finishes, so the way out is here too. */}
       <div className="mt-2 flex flex-col items-center">

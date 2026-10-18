@@ -6,7 +6,7 @@ import { Suspense, useState } from "react";
 import { AUTH_NOTICES, friendlyError } from "@raven/shared";
 import { createClient } from "@/lib/supabase/client";
 import { RavenMark } from "@/components/RavenMark";
-import { SpinnerIcon } from "@/components/icons";
+import { Busy } from "@/components/Busy";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -99,8 +99,10 @@ function SignupForm() {
           disabled={busyGoogle}
           className="flex items-center justify-center gap-3 rounded-full border border-line bg-raised px-6 py-3.5 text-base font-semibold text-ink transition hover:border-ink-faint active:scale-[0.97] disabled:opacity-60"
         >
-          {busyGoogle ? <SpinnerIcon className="size-5 animate-spin" /> : <GoogleIcon className="size-5" />}
-          Continue with Google
+          <Busy pending={busyGoogle} className="inline-flex items-center gap-3">
+            <GoogleIcon className="size-5" />
+            Continue with Google
+          </Busy>
         </button>
 
         <div className="my-1 flex items-center gap-3 text-xs text-ink-faint">
@@ -129,8 +131,7 @@ function SignupForm() {
               disabled={busyEmail || !email.trim()}
               className="flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-40"
             >
-              {busyEmail ? <SpinnerIcon className="size-5 animate-spin" /> : null}
-              {busyEmail ? "Sending…" : "Continue with email"}
+              <Busy pending={busyEmail}>Continue with email</Busy>
             </button>
           </form>
         )}

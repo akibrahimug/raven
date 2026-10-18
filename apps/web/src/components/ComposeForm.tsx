@@ -18,6 +18,7 @@ import { preparePhoto } from "@/lib/photo";
 import { RavenMark } from "@/components/RavenMark";
 import { LocationIcon, PhotoIcon, XIcon } from "@/components/icons";
 import { Bone } from "@/components/Skeleton";
+import { Busy } from "@/components/Busy";
 
 // If the client-side hop to the inbox hasn't happened by then, load it outright.
 const NAVIGATE_FALLBACK_MS = 4000;
@@ -305,10 +306,15 @@ function SendButton({
         type="button"
         onClick={onSend}
         disabled={disabled}
-        className="flex items-center gap-2.5 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-40"
+        aria-busy={sending}
+        className={`flex items-center rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] ${
+          sending ? "" : "disabled:opacity-40"
+        }`}
       >
-        <RavenMark className="size-5 text-white" />
-        {sending ? "Sending…" : "Send the Raven"}
+        <Busy pending={sending} className="inline-flex items-center gap-2.5">
+          <RavenMark className="size-5 text-white" />
+          Send the Raven
+        </Busy>
       </button>
       {children}
     </div>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { recallRaven } from "@/lib/actions";
-import { SpinnerIcon } from "@/components/icons";
+import { Busy } from "@/components/Busy";
 
 /** Deleting a raven removes it for everyone — ask twice, quietly. */
 export function RecallButton({ ravenId }: { ravenId: string }) {
@@ -37,8 +37,7 @@ export function RecallButton({ ravenId }: { ravenId: string }) {
           }
           className="flex items-center gap-1.5 font-semibold text-late-amber transition active:scale-[0.97] disabled:opacity-50"
         >
-          {pending ? <SpinnerIcon className="size-3.5 animate-spin" /> : null}
-          {pending ? "Recalling…" : "Yes, recall"}
+          <Busy pending={pending}>Yes, recall</Busy>
         </button>
         <button type="button" onClick={() => setConfirming(false)} className="text-ink-faint">
           Keep it

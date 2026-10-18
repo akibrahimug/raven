@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
-import { completeOnboarding, signOut } from "@/lib/actions";
+import { completeOnboarding } from "@/lib/actions";
+import { SignOutButton } from "@/components/SignOutButton";
+import { SubmitButton } from "@/components/Busy";
 import { getSessionProfile } from "@/lib/data";
 import { safeNext } from "@/lib/redirect";
 import { RavenMark } from "@/components/RavenMark";
@@ -42,12 +44,9 @@ export default async function OnboardingPage({
           placeholder="AK"
           className="rounded-2xl border border-line bg-raised px-5 py-4 text-lg focus:border-accent focus:outline-none"
         />
-        <button
-          type="submit"
-          className="mt-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]"
-        >
+        <SubmitButton className="mt-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97]">
           Done
-        </button>
+        </SubmitButton>
       </form>
       {hint ? (
         <p className="mt-3 text-center text-xs text-ink-faint">
@@ -55,11 +54,7 @@ export default async function OnboardingPage({
         </p>
       ) : null}
       {error ? <p className="mt-4 text-sm text-late-amber">{error}</p> : null}
-      <form action={signOut} className="mt-4 text-center">
-        <button type="submit" className="text-sm text-ink-faint underline-offset-2 hover:underline">
-          Not you? Sign out
-        </button>
-      </form>
+      <SignOutButton label="Not you? Sign out" className="mt-4 text-center" />
       {/* Changed your mind partway through? Settings is out of reach until
           sign-up finishes, so the way out is here too. */}
       <div className="mt-2 flex flex-col items-center">

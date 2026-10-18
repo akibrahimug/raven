@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { deleteAccount } from "@/lib/actions";
 import { deleteOwnPhotos } from "@/lib/storage";
-import { SpinnerIcon } from "@/components/icons";
+import { Busy } from "@/components/Busy";
 
 /** Deleting your account can't be undone — say exactly what goes, then ask. */
 export function DeleteAccountButton() {
@@ -51,8 +51,7 @@ export function DeleteAccountButton() {
           }
           className="flex items-center gap-1.5 font-semibold text-late-amber transition active:scale-[0.97] disabled:opacity-50"
         >
-          {pending ? <SpinnerIcon className="size-3.5 animate-spin" /> : null}
-          {pending ? "Deleting…" : "Yes, delete everything"}
+          <Busy pending={pending}>Yes, delete everything</Busy>
         </button>
         <button
           type="button"

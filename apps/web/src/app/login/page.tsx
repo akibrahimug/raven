@@ -9,7 +9,7 @@ import { normalisePhone } from "@/lib/format";
 import { takeStashedPhone } from "@/lib/handoff";
 import { safeNext } from "@/lib/redirect";
 import { RavenMark } from "@/components/RavenMark";
-import { SpinnerIcon } from "@/components/icons";
+import { Busy } from "@/components/Busy";
 
 function LoginForm() {
   const router = useRouter();
@@ -107,8 +107,7 @@ function LoginForm() {
             disabled={busy || phone.trim().length < 10}
             className="mt-2 flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-60"
           >
-            {busy ? <SpinnerIcon className="size-5 animate-spin" /> : null}
-            {busy ? "Texting…" : "Text me a code"}
+            <Busy pending={busy}>Text me a code</Busy>
           </button>
         </form>
       ) : (
@@ -131,8 +130,7 @@ function LoginForm() {
             disabled={busy || code.trim().length < 6}
             className="mt-2 flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-60"
           >
-            {busy ? <SpinnerIcon className="size-5 animate-spin" /> : null}
-            {busy ? "Signing in…" : "Sign in"}
+            <Busy pending={busy}>Sign in</Busy>
           </button>
           <button
             type="button"

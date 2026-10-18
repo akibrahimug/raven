@@ -6,7 +6,7 @@ import { friendlyError, isTestNumber } from "@raven/shared";
 import { createClient } from "@/lib/supabase/client";
 import { normalisePhone } from "@/lib/format";
 import { stashPhone } from "@/lib/handoff";
-import { SpinnerIcon } from "@/components/icons";
+import { Busy } from "@/components/Busy";
 
 /** Attaches a number to the Google/email account that's signed in. The
  *  server texts it a code and changes nothing until that code comes back. */
@@ -85,8 +85,7 @@ export function PhoneForm({ next, hasProfile }: { next: string; hasProfile: bool
             disabled={busy || phone.trim().length < 10}
             className="mt-2 flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-60"
           >
-            {busy ? <SpinnerIcon className="size-5 animate-spin" /> : null}
-            {busy ? "Texting…" : "Text me a code"}
+            <Busy pending={busy}>Text me a code</Busy>
           </button>
         </form>
       ) : (
@@ -110,8 +109,7 @@ export function PhoneForm({ next, hasProfile }: { next: string; hasProfile: bool
             disabled={busy || code.trim().length < 6}
             className="mt-2 flex items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-60"
           >
-            {busy ? <SpinnerIcon className="size-5 animate-spin" /> : null}
-            {busy ? "Checking…" : "Verify number"}
+            <Busy pending={busy}>Verify number</Busy>
           </button>
           <button
             type="button"

@@ -6,6 +6,7 @@ import { friendlyError, initials, levelForPoints, type Profile } from "@raven/sh
 import { uploadMedia } from "@/lib/storage";
 import { preparePhoto } from "@/lib/photo";
 import { updateAvatarUrl } from "@/lib/actions";
+import { SpinnerIcon } from "@/components/icons";
 
 export function AvatarUploader({ profile }: { profile: Profile }) {
   const router = useRouter();
@@ -60,8 +61,12 @@ export function AvatarUploader({ profile }: { profile: Profile }) {
         ) : (
           initials(profile.display_name)
         )}
-        <span className="absolute inset-0 grid place-items-center bg-ink/0 text-[10px] font-semibold text-transparent transition-colors group-hover:bg-ink/40 group-hover:text-white">
-          {busy ? "…" : "Change"}
+        <span
+          className={`absolute inset-0 grid place-items-center text-[10px] font-semibold transition-colors ${
+            busy ? "bg-ink/40 text-white" : "bg-ink/0 text-transparent group-hover:bg-ink/40 group-hover:text-white"
+          }`}
+        >
+          {busy ? <SpinnerIcon className="size-5 animate-spin" /> : "Change"}
         </span>
       </button>
       {error ? <p className="text-xs text-late-amber">{error}</p> : null}

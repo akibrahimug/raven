@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { friendlyError, type RsvpStatus } from "@raven/shared";
 import { createClient } from "@/lib/supabase/server";
 import { getSignedInUser } from "@/lib/supabase/claims";
@@ -210,8 +212,34 @@ export async function deleteAccount(): Promise<{ error: string }> {
   redirect("/signup?notice=deleted");
 }
 
+/** Signs this browser out at once, then ends the session everywhere.
+ *  supabase.auth.signOut() asks GoTrue to revoke the session before it
+ *  clears anything (even with scope "local"), and on this box that call is
+ *  the slow part — so the cookies are cleared here directly, and the same
+ *  revoke (every device, as before) runs after the response has gone. */
 export async function signOut() {
   const supabase = await createClient();
-  await supabase.auth.signOut();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const cookieStore = await cookies();
+  for (const { name } of cookieStore.getAll()) {
+    // sb-<ref>-auth-token, its .0/.1 chunks, and the PKCE code verifier.
+    if (name.startsWith("sb-") && name.includes("-auth-token")) {
+      cookieStore.set(name, "", { path: "/", maxAge: 0 });
+    }
+  }
+  if (session) {
+    const accessToken = session.access_token;
+    after(() =>
+      fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/logout?scope=global`, {
+        method: "POST",
+        headers: {
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }).catch(() => {}),
+    );
+  }
   redirect("/login");
 }
