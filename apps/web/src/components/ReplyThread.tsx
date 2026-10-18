@@ -5,6 +5,7 @@ import type { Profile } from "@raven/shared";
 import { createClient } from "@/lib/supabase/client";
 import type { ReplyRow } from "@/lib/data";
 import { ReplyForm } from "@/components/ReplyForm";
+import { RavenPhoto } from "@/components/RavenPhoto";
 
 /** Owns the reply list's live state: seeded from the server-rendered
  *  replies, then patched directly — an optimistic entry the instant the
@@ -98,10 +99,8 @@ export function ReplyThread({
                 </p>
               ) : null}
               {reply.media_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <RavenPhoto
                   src={reply.media_url}
-                  alt=""
                   className="max-h-64 max-w-full rounded-2xl border border-line object-cover"
                 />
               ) : null}

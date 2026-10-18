@@ -54,30 +54,8 @@ body {
   animation: card-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* The one orchestrated moment: the paper plane sailing off on send. */
-@keyframes raven-glide {
-  0% {
-    opacity: 0;
-    transform: translate(-30vw, 24vh) rotate(8deg) scale(0.7);
-  }
-  20% {
-    opacity: 1;
-  }
-  60% {
-    transform: translate(8vw, -6vh) rotate(-4deg) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(48vw, -26vh) rotate(-10deg) scale(0.85);
-  }
-}
-.raven-glide {
-  animation: raven-glide 1100ms cubic-bezier(0.45, 0, 0.2, 1) both;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .card-in,
-  .raven-glide {
+  .card-in {
     animation: none;
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Suspense, use, useRef, useState, useTransition, type ReactNode } from "react";
+import { Suspense, use, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   CUSTOM_EXPIRY_HOURS_MAX,
   CUSTOM_EXPIRY_HOURS_MIN,
@@ -18,7 +18,8 @@ import { RavenMark } from "@/components/RavenMark";
 import { LocationIcon, PhotoIcon, XIcon } from "@/components/icons";
 import { Bone } from "@/components/Skeleton";
 
-const GLIDE_MS = 1100;
+// If the client-side hop to the inbox hasn't happened by then, load it outright.
+const NAVIGATE_FALLBACK_MS = 4000;
 const DEFAULT_CUSTOM_HOURS = "6";
 
 type ExpiryChoice = ExpiryPreset | "custom";
@@ -35,10 +36,13 @@ export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
   const [addingLocation, setAddingLocation] = useState(false);
   const [location, setLocation] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [gliding, setGliding] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const locationInput = useRef<HTMLInputElement>(null);
+  const fallbackTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // Leaving the page (the inbox arrived) cancels the hard-load fallback.
+  useEffect(() => () => clearTimeout(fallbackTimer.current), []);
 
   const customHoursValid =
     preset !== "custom" ||
@@ -66,37 +70,37 @@ export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
     return preset === "custom" ? expiryFromCustomHours(Number(customHours)) : expiryFromPreset(preset);
   }
 
-  function submit() {
+  async function submit() {
     if (!ready || pending) return;
     setError(null);
-    setGliding(true);
-    startTransition(async () => {
-      let mediaUrl: string | null = null;
-      if (photo) {
-        try {
-          mediaUrl = await uploadMedia(photo);
-        } catch (uploadError) {
-          setGliding(false);
-          setError(friendlyError(uploadError));
-          return;
-        }
-      }
-      const glideDone = new Promise((resolve) => setTimeout(resolve, GLIDE_MS));
-      const result = await sendRaven({
-        body,
-        expiresAt: expiresAt().toISOString(),
-        mediaUrl,
-        location: location.trim() || null,
-      });
-      await glideDone;
-      if (result?.error) {
-        setGliding(false);
-        setError(result.error);
+    setPending(true);
+    let mediaUrl: string | null = null;
+    if (photo) {
+      try {
+        mediaUrl = await uploadMedia(photo);
+      } catch (uploadError) {
+        setPending(false);
+        setError(friendlyError(uploadError));
         return;
       }
-      // sendRaven already revalidated the inbox, so this lands on fresh data.
-      router.push("/");
+    }
+    const result = await sendRaven({
+      body,
+      expiresAt: expiresAt().toISOString(),
+      mediaUrl,
+      location: location.trim() || null,
     });
+    if (result?.error) {
+      setPending(false);
+      setError(result.error);
+      return;
+    }
+    // Sent. Go straight to the inbox — sendRaven already revalidated it. The
+    // client-side navigation is kept out of any transition so nothing holds
+    // this page on screen while the inbox loads; its skeleton shows instead.
+    // Should that hop still stall, a full page load finishes the job.
+    router.replace("/");
+    fallbackTimer.current = setTimeout(() => window.location.assign("/"), NAVIGATE_FALLBACK_MS);
   }
 
   return (
@@ -238,14 +242,8 @@ export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
           </SendButton>
         }
       >
-        <SendArea friendCount={friendCount} ready={ready && !pending} onSend={submit} />
+        <SendArea friendCount={friendCount} ready={ready && !pending} sending={pending} onSend={submit} />
       </Suspense>
-
-      {gliding ? (
-        <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center bg-paper/60">
-          <RavenMark className="raven-glide size-24 text-accent" />
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -255,15 +253,17 @@ export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
 function SendArea({
   friendCount,
   ready,
+  sending,
   onSend,
 }: {
   friendCount: Promise<number>;
   ready: boolean;
+  sending: boolean;
   onSend: () => void;
 }) {
   const count = use(friendCount);
   return (
-    <SendButton disabled={!ready || count === 0} onSend={onSend}>
+    <SendButton disabled={!ready || count === 0} sending={sending} onSend={onSend}>
       <p className="text-xs text-ink-faint">
         {count === 0
           ? "No friends yet — share your invite link from the Friends page first."
@@ -275,10 +275,12 @@ function SendArea({
 
 function SendButton({
   disabled,
+  sending = false,
   onSend,
   children,
 }: {
   disabled: boolean;
+  sending?: boolean;
   onSend: () => void;
   children: ReactNode;
 }) {
@@ -291,7 +293,7 @@ function SendButton({
         className="flex items-center gap-2.5 rounded-full bg-accent px-7 py-3.5 text-base font-semibold text-white transition hover:bg-accent-deep active:scale-[0.97] disabled:opacity-40"
       >
         <RavenMark className="size-5 text-white" />
-        Send the Raven
+        {sending ? "Sending…" : "Send the Raven"}
       </button>
       {children}
     </div>

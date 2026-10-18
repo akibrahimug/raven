@@ -14,6 +14,9 @@ export async function uploadMedia(file: File): Promise<string> {
   const path = `${user.id}/${crypto.randomUUID()}.${extension}`;
   const { error } = await supabase.storage.from("raven-media").upload(path, file, {
     contentType: file.type || undefined,
+    // The path is a fresh uuid and never reused, so browsers can keep the
+    // photo for good instead of refetching it from the slow storage server.
+    cacheControl: "31536000",
   });
   if (error) throw new Error(friendlyError(error));
   return supabase.storage.from("raven-media").getPublicUrl(path).data.publicUrl;

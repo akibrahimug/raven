@@ -4,6 +4,7 @@ import { lifeElapsed, timeLeft } from "@/lib/format";
 import { RsvpButtons } from "@/components/RsvpButtons";
 import { Avatar } from "@/components/Avatar";
 import { LocationIcon } from "@/components/icons";
+import { RavenPhoto } from "@/components/RavenPhoto";
 
 function attendingLine(raven: InboxRaven, viewerId: string): string | null {
   const attending = raven.recipients.filter(
@@ -61,10 +62,8 @@ export function RavenCard({ raven, viewerId }: { raven: InboxRaven; viewerId: st
           </p>
         ) : null}
         {raven.media_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <RavenPhoto
             src={raven.media_url}
-            alt=""
             className="mt-3 max-h-72 w-full rounded-xl border border-line object-cover"
           />
         ) : null}

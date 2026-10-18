@@ -10,6 +10,7 @@ import { RecallButton } from "@/components/RecallButton";
 import { AttendeeList } from "@/components/AttendeeList";
 import { Avatar } from "@/components/Avatar";
 import { LocationIcon } from "@/components/icons";
+import { RavenPhoto } from "@/components/RavenPhoto";
 
 export const dynamic = "force-dynamic";
 
@@ -62,10 +63,8 @@ export default async function RavenPage({ params }: { params: Promise<{ id: stri
           </a>
         ) : null}
         {raven.media_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <RavenPhoto
             src={raven.media_url}
-            alt=""
             className="mt-4 max-h-96 w-full rounded-2xl border border-line object-cover"
           />
         ) : null}
