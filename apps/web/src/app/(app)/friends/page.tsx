@@ -1,6 +1,7 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { levelForPoints } from "@raven/shared";
-import { getFriendRequests, getFriends, getSessionProfile } from "@/lib/data";
+import { getActiveFriendRavens, getFriendRequests, getFriends, getSessionProfile } from "@/lib/data";
 import { Avatar } from "@/components/Avatar";
 import { FriendRequests } from "@/components/FriendRequests";
 import { InviteCard } from "@/components/InviteCard";
@@ -57,7 +58,11 @@ async function Requests() {
 }
 
 async function FriendList({ userId }: { userId: string }) {
-  const friends = await getFriends(userId);
+  const [friends, flying] = await Promise.all([
+    getFriends(userId),
+    // No dots is a fine fallback — never a reason to lose the list.
+    getActiveFriendRavens(userId).catch(() => new Map<string, string>()),
+  ]);
   if (friends.length === 0) {
     return <p className="mt-2 text-sm text-ink-faint">No one yet — share your link above.</p>;
   }
@@ -65,13 +70,37 @@ async function FriendList({ userId }: { userId: string }) {
     <ul className="mt-3 divide-y divide-line rounded-2xl border border-line bg-raised">
       {friends.map((friend) => {
         const level = levelForPoints(friend.points);
-        return (
-          <li key={friend.id} className="flex items-center gap-3 px-4 py-3">
-            <Avatar profile={friend} size="md" />
-            <span className="text-sm font-medium">{friend.display_name}</span>
+        const ravenId = flying.get(friend.id);
+        const row = (
+          <>
+            <span className="relative">
+              <Avatar profile={friend} size="md" />
+              {ravenId ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-accent ring-2 ring-raised"
+                />
+              ) : null}
+            </span>
+            <span className="flex flex-col">
+              <span className="text-sm font-medium">{friend.display_name}</span>
+              {ravenId ? <span className="text-xs text-accent">Has a raven out</span> : null}
+            </span>
             <span className="ml-auto text-xs font-semibold" style={{ color: level.color }}>
               {level.name}
             </span>
+          </>
+        );
+        return (
+          <li key={friend.id}>
+            {ravenId ? (
+              // Tapping a friend with a raven out opens it.
+              <Link href={`/r/${ravenId}`} className="flex items-center gap-3 px-4 py-3 hover:bg-sunken/50">
+                {row}
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3 px-4 py-3">{row}</div>
+            )}
           </li>
         );
       })}

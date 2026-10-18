@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getFriendRequests, getSessionProfile } from "@/lib/data";
+import { getActiveFriendRavens, getFriendRequests, getSessionProfile } from "@/lib/data";
 import { RavenMark } from "@/components/RavenMark";
 import { RealtimeRefresh } from "@/components/RealtimeRefresh";
 import { SendFab } from "@/components/SendFab";
@@ -25,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/friends" className="relative hover:text-ink">
             Friends
             <Suspense fallback={null}>
-              <RequestsDot />
+              <FriendsDot />
             </Suspense>
           </Link>
           <Link href="/settings" aria-label="Settings">
@@ -55,17 +55,28 @@ async function HeaderAvatar() {
   return <Avatar profile={session.profile} size="md" />;
 }
 
-/** Someone's asking to be friends. A failed lookup just means no dot — it
- *  mustn't take the whole app down with it. */
-async function RequestsDot() {
-  const incoming = await getFriendRequests()
-    .then((requests) => requests.incoming.length)
-    .catch(() => 0);
-  if (!incoming) return null;
+/** Someone's asking to be friends, or a friend has a raven out. A failed
+ *  lookup just means no dot — it mustn't take the whole app down with it. */
+async function FriendsDot() {
+  const session = await getSessionProfile();
+  if (!session) return null;
+  const [incoming, flying] = await Promise.all([
+    getFriendRequests()
+      .then((requests) => requests.incoming.length)
+      .catch(() => 0),
+    getActiveFriendRavens(session.userId)
+      .then((ravens) => ravens.size)
+      .catch(() => 0),
+  ]);
+  if (!incoming && !flying) return null;
+  const said = [
+    incoming ? `${incoming} asking to be friends` : null,
+    flying ? `${flying} with a raven out` : null,
+  ].filter(Boolean);
   return (
     <>
       <span aria-hidden="true" className="absolute -right-2 -top-0.5 size-2 rounded-full bg-accent" />
-      <span className="sr-only">, {incoming} asking to be friends</span>
+      <span className="sr-only">, {said.join(", ")}</span>
     </>
   );
 }
