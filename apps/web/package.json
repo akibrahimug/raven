@@ -12,6 +12,7 @@
     "@raven/shared": "workspace:*",
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.1",
+    "heic-to": "1.6.6",
     "next": "^15.3.4",
     "react": "19.2.3",
     "react-dom": "19.2.3"

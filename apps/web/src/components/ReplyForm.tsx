@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import { friendlyError } from "@raven/shared";
 import { sendReply } from "@/lib/actions";
 import { uploadMedia } from "@/lib/storage";
+import { preparePhoto } from "@/lib/photo";
 import type { ReplyRow } from "@/lib/data";
 import { PhotoIcon, XIcon } from "@/components/icons";
 
@@ -29,20 +30,33 @@ export function ReplyForm({
   const [body, setBody] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const fileInput = useRef<HTMLInputElement>(null);
 
-  function pickPhoto(file: File | null) {
+  async function pickPhoto(file: File | null) {
     if (preview) URL.revokeObjectURL(preview);
-    setPhoto(file);
-    setPreview(file ? URL.createObjectURL(file) : null);
+    setPhoto(null);
+    setPreview(null);
+    if (!file) return;
+    setError(null);
+    setPreparingPhoto(true);
+    try {
+      const prepared = await preparePhoto(file);
+      setPhoto(prepared);
+      setPreview(URL.createObjectURL(prepared));
+    } catch (photoError) {
+      setError(friendlyError(photoError));
+    } finally {
+      setPreparingPhoto(false);
+    }
   }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     const trimmed = body.trim();
-    if ((!trimmed && !photo) || pending) return;
+    if ((!trimmed && !photo) || pending || preparingPhoto) return;
 
     const tempId = `pending-${crypto.randomUUID()}`;
     // The local blob preview doubles as the optimistic bubble's image — no
@@ -108,15 +122,16 @@ export function ReplyForm({
         <input
           ref={fileInput}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           className="hidden"
           onChange={(event) => pickPhoto(event.target.files?.[0] ?? null)}
         />
         <button
           type="button"
           onClick={() => fileInput.current?.click()}
-          aria-label="Add a photo"
-          className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-raised text-ink-soft transition-colors hover:border-accent hover:text-accent"
+          aria-label={preparingPhoto ? "Preparing photo" : "Add a photo"}
+          disabled={preparingPhoto}
+          className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-raised text-ink-soft transition-colors hover:border-accent hover:text-accent disabled:animate-pulse"
         >
           <PhotoIcon className="size-5" />
         </button>

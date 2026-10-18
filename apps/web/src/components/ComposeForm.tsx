@@ -14,6 +14,7 @@ import {
 } from "@raven/shared";
 import { sendRaven } from "@/lib/actions";
 import { uploadMedia } from "@/lib/storage";
+import { preparePhoto } from "@/lib/photo";
 import { RavenMark } from "@/components/RavenMark";
 import { LocationIcon, PhotoIcon, XIcon } from "@/components/icons";
 import { Bone } from "@/components/Skeleton";
@@ -33,6 +34,7 @@ export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
   const [customHours, setCustomHours] = useState(DEFAULT_CUSTOM_HOURS);
   const [photo, setPhoto] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [preparingPhoto, setPreparingPhoto] = useState(false);
   const [addingLocation, setAddingLocation] = useState(false);
   const [location, setLocation] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +49,24 @@ export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
   const customHoursValid =
     preset !== "custom" ||
     (Number(customHours) >= CUSTOM_EXPIRY_HOURS_MIN && Number(customHours) <= CUSTOM_EXPIRY_HOURS_MAX);
-  const ready = body.trim().length > 0 && customHoursValid;
+  const ready = body.trim().length > 0 && customHoursValid && !preparingPhoto;
 
-  function pickPhoto(file: File | null) {
+  async function pickPhoto(file: File | null) {
     if (preview) URL.revokeObjectURL(preview);
-    setPhoto(file);
-    setPreview(file ? URL.createObjectURL(file) : null);
+    setPhoto(null);
+    setPreview(null);
+    if (!file) return;
+    setError(null);
+    setPreparingPhoto(true);
+    try {
+      const prepared = await preparePhoto(file);
+      setPhoto(prepared);
+      setPreview(URL.createObjectURL(prepared));
+    } catch (photoError) {
+      setError(friendlyError(photoError));
+    } finally {
+      setPreparingPhoto(false);
+    }
   }
 
   function openLocation() {
@@ -119,7 +133,7 @@ export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
         <input
           ref={fileInput}
           type="file"
-          accept="image/*"
+          accept="image/*,.heic,.heif"
           className="hidden"
           onChange={(event) => pickPhoto(event.target.files?.[0] ?? null)}
         />
@@ -140,10 +154,11 @@ export function ComposeForm({ friendCount }: { friendCount: Promise<number> }) {
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
-            className="flex items-center gap-2 rounded-full border border-line bg-raised px-3.5 py-1.5 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent"
+            disabled={preparingPhoto}
+            className="flex items-center gap-2 rounded-full border border-line bg-raised px-3.5 py-1.5 text-sm font-medium text-ink-soft transition-colors hover:border-accent hover:text-accent disabled:opacity-60"
           >
             <PhotoIcon className="size-4.5" />
-            Add a photo
+            {preparingPhoto ? "Preparing photo…" : "Add a photo"}
           </button>
         )}
 

@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { friendlyError, initials, levelForPoints, type Profile } from "@raven/shared";
 import { uploadMedia } from "@/lib/storage";
+import { preparePhoto } from "@/lib/photo";
 import { updateAvatarUrl } from "@/lib/actions";
 
 export function AvatarUploader({ profile }: { profile: Profile }) {
@@ -18,10 +19,12 @@ export function AvatarUploader({ profile }: { profile: Profile }) {
     if (!file) return;
     setBusy(true);
     setError(null);
-    const localPreview = URL.createObjectURL(file);
-    setPreview(localPreview);
+    let localPreview: string | null = null;
     try {
-      const url = await uploadMedia(file);
+      const prepared = await preparePhoto(file);
+      localPreview = URL.createObjectURL(prepared);
+      setPreview(localPreview);
+      const url = await uploadMedia(prepared);
       const result = await updateAvatarUrl(url);
       if (result?.error) throw new Error(result.error);
       router.refresh();
@@ -30,7 +33,7 @@ export function AvatarUploader({ profile }: { profile: Profile }) {
       setError(friendlyError(e));
     } finally {
       setBusy(false);
-      URL.revokeObjectURL(localPreview);
+      if (localPreview) URL.revokeObjectURL(localPreview);
     }
   }
 
@@ -39,7 +42,7 @@ export function AvatarUploader({ profile }: { profile: Profile }) {
       <input
         ref={fileInput}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         className="hidden"
         onChange={(event) => choosePhoto(event.target.files?.[0] ?? null)}
       />
