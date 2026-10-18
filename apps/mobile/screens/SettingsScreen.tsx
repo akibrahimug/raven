@@ -8,11 +8,10 @@ import {
   TextInput,
   View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
 import { colors, friendlyError, levelForPoints, nextLevel, type Profile } from "@raven/shared";
 import { supabase } from "../lib/supabase";
 import { setDiscoverable } from "../lib/data";
-import { uploadPhotoBase64 } from "../lib/media";
+import { pickPhoto, uploadPhotoBase64 } from "../lib/media";
 import { getHapticsEnabled, setHapticsEnabled } from "../lib/prefs";
 import { unregisterPushToken } from "../lib/push";
 import { Avatar } from "../components/Avatar";
@@ -42,18 +41,19 @@ export function SettingsScreen({
   const next = nextLevel(profile.points);
 
   async function changePhoto() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
-      quality: 0.7,
-      base64: true,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-    if (result.canceled || !result.assets[0]?.base64) return;
-    setUploading(true);
     setError(null);
+    let photo;
     try {
-      const url = await uploadPhotoBase64(profile.id, result.assets[0].base64);
+      // An avatar never shows bigger than a thumbnail.
+      photo = await pickPhoto({ allowsEditing: true, aspect: [1, 1], maxEdge: 512 });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not open that photo.");
+      return;
+    }
+    if (!photo) return;
+    setUploading(true);
+    try {
+      const url = await uploadPhotoBase64(profile.id, photo.base64);
       const { error } = await supabase
         .from("profiles")
         .update({ avatar_url: url })

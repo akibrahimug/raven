@@ -23,10 +23,9 @@ import {
   expiryFromPreset,
   type ExpiryPreset,
 } from "@raven/shared";
-import * as ImagePicker from "expo-image-picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { sendRaven } from "../lib/data";
-import { uploadPhotoBase64 } from "../lib/media";
+import { pickPhoto as pickAndShrinkPhoto, uploadPhotoBase64 } from "../lib/media";
 import { buzzTap } from "../lib/prefs";
 import { LocationPin, Plane, Pill, displayText } from "../components/ui";
 
@@ -69,14 +68,13 @@ export function ComposeScreen({
   }
 
   async function pickPhoto() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: "images",
-      quality: 0.7,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
-      setPhotoBase64(result.assets[0].base64 ?? null);
+    try {
+      const photo = await pickAndShrinkPhoto();
+      if (!photo) return;
+      setPhotoUri(photo.uri);
+      setPhotoBase64(photo.base64);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not open that photo.");
     }
   }
 
