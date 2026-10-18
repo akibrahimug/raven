@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { friendlyError, type Profile, type Raven, type RavenRecipient, type RavenReply } from "@raven/shared";
 import { createClient } from "@/lib/supabase/server";
+import { getSignedInUser } from "@/lib/supabase/claims";
 
 /** Logs the raw Postgres error for debugging, throws only the friendly text —
  *  this is what a Next.js error boundary would render if a page-load query fails. */
@@ -81,14 +82,12 @@ export const getSessionProfile = cache(async (): Promise<{
   oauthHint: { displayName: string | null; avatarUrl: string | null } | null;
 } | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSignedInUser(supabase);
   if (!user) return null;
   const { data } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
-  const meta = user.user_metadata ?? {};
+  const meta = user.userMetadata;
   const oauthHint =
-    user.app_metadata?.provider === "google"
+    user.provider === "google"
       ? {
           displayName: (meta.full_name ?? meta.name ?? null) as string | null,
           avatarUrl: (meta.avatar_url ?? meta.picture ?? null) as string | null,
@@ -97,7 +96,7 @@ export const getSessionProfile = cache(async (): Promise<{
   return {
     userId: user.id,
     profile: data ?? null,
-    phoneVerified: Boolean(user.phone_confirmed_at),
+    phoneVerified: user.phoneVerified,
     oauthHint,
   };
 });

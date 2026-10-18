@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSignedInUser } from "@/lib/supabase/claims";
 
 const PUBLIC_PATHS = [/^\/login/, /^\/signup/, /^\/auth\/callback/, /^\/j\//];
 
@@ -26,9 +27,7 @@ export async function middleware(request: NextRequest) {
   );
 
   // Refreshes the session if expired — required for server components.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSignedInUser(supabase);
 
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((re) => re.test(pathname));
@@ -46,13 +45,13 @@ export async function middleware(request: NextRequest) {
   // Google and email sign-ups arrive without a phone number, but the number
   // is how a Raven account logs back in — until it's verified by SMS code,
   // /phone is the only page that opens.
-  if (user && !user.phone_confirmed_at && !isPublic && pathname !== "/phone") {
+  if (user && !user.phoneVerified && !isPublic && pathname !== "/phone") {
     const url = request.nextUrl.clone();
     url.pathname = "/phone";
     url.search = "";
     url.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
     const redirect = NextResponse.redirect(url);
-    // getUser() above may have just refreshed the session; a redirect that
+    // getSignedInUser() above may have just refreshed the session; a redirect that
     // dropped the new cookies would leave the browser holding a rotated-out
     // refresh token.
     response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));

@@ -5,9 +5,12 @@ import { createClient } from "@/lib/supabase/client";
  *  public URL. Paths are uuid-based, so URLs are unguessable. */
 export async function uploadMedia(file: File): Promise<string> {
   const supabase = createClient();
+  // The session the browser already holds — no auth round trip before the
+  // upload. Storage checks the token itself.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
   if (!user) throw new Error("You've been signed out — sign in again.");
 
   const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";

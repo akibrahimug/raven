@@ -4,17 +4,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { friendlyError, type RsvpStatus } from "@raven/shared";
 import { createClient } from "@/lib/supabase/server";
+import { getSignedInUser } from "@/lib/supabase/claims";
 import { safeNext } from "@/lib/redirect";
 
 async function requireUser() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getSignedInUser(supabase);
   if (!user) redirect("/login");
   // Middleware already holds every private page at /phone until the number
   // is verified; this covers actions posted from public ones like /j/.
-  if (!user.phone_confirmed_at) redirect("/phone");
+  if (!user.phoneVerified) redirect("/phone");
   return { supabase, user };
 }
 
@@ -202,10 +201,7 @@ export async function deleteAccount(): Promise<{ error: string }> {
   // Not requireUser(): a sign-up that stopped at the phone step has no
   // verified number yet, and still gets to delete itself.
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  if (!(await getSignedInUser(supabase))) redirect("/login");
   const { error } = await supabase.rpc("delete_my_account");
   if (error) return { error: friendlyError(error) };
   // Local only: the server-side session went with the account, so there's
