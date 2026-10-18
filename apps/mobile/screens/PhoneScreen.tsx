@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { colors, friendlyError, isTestNumber, normalisePhone } from "@raven/shared";
 import { supabase } from "../lib/supabase";
-import { Plane, displayText } from "../components/ui";
+import { Plane, displayText, Busy } from "../components/ui";
 import { DeleteAccountLink } from "../components/DeleteAccountLink";
 
 /** Step two of signing up, after Google or the email link — mirrors the web
@@ -93,7 +93,9 @@ export function PhoneScreen({
               pressed && { backgroundColor: colors.accentDeep },
             ]}
           >
-            <Text style={styles.buttonLabel}>{busy ? "Texting…" : "Text me a code"}</Text>
+            <Busy pending={busy}>
+              <Text style={styles.buttonLabel}>Text me a code</Text>
+            </Busy>
           </Pressable>
         </>
       ) : (
@@ -118,7 +120,9 @@ export function PhoneScreen({
               pressed && { backgroundColor: colors.accentDeep },
             ]}
           >
-            <Text style={styles.buttonLabel}>{busy ? "Checking…" : "Verify number"}</Text>
+            <Busy pending={busy}>
+              <Text style={styles.buttonLabel}>Verify number</Text>
+            </Busy>
           </Pressable>
           <Pressable
             onPress={() => {

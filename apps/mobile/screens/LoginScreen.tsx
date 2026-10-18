@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { AUTH_NOTICES, colors, friendlyError, normalisePhone, type AuthNotice } from "@raven/shared";
 import { supabase } from "../lib/supabase";
-import { Plane, displayText } from "../components/ui";
+import { Plane, displayText, Busy } from "../components/ui";
 
 export function LoginScreen({
   notice,
@@ -96,7 +96,9 @@ export function LoginScreen({
               pressed && { backgroundColor: colors.accentDeep },
             ]}
           >
-            <Text style={styles.buttonLabel}>Text me a code</Text>
+            <Busy pending={busy}>
+              <Text style={styles.buttonLabel}>Text me a code</Text>
+            </Busy>
           </Pressable>
         </View>
       ) : (
@@ -120,7 +122,9 @@ export function LoginScreen({
               pressed && { backgroundColor: colors.accentDeep },
             ]}
           >
-            <Text style={styles.buttonLabel}>Sign in</Text>
+            <Busy pending={busy}>
+              <Text style={styles.buttonLabel}>Sign in</Text>
+            </Busy>
           </Pressable>
           <Pressable onPress={() => setStep("phone")}>
             <Text style={styles.secondary}>Different number</Text>

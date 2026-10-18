@@ -11,7 +11,7 @@ import {
 import { colors } from "@raven/shared";
 import { createProfile } from "../lib/data";
 import { supabase } from "../lib/supabase";
-import { Plane, displayText } from "../components/ui";
+import { Plane, displayText, Busy } from "../components/ui";
 import { DeleteAccountLink } from "../components/DeleteAccountLink";
 
 export function OnboardingScreen({
@@ -85,7 +85,9 @@ export function OnboardingScreen({
           pressed && { backgroundColor: colors.accentDeep },
         ]}
       >
-        <Text style={styles.buttonLabel}>Done</Text>
+        <Busy pending={busy}>
+          <Text style={styles.buttonLabel}>Done</Text>
+        </Busy>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Pressable onPress={() => supabase.auth.signOut()} style={styles.signOut}>

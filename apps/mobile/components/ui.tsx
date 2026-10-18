@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
+import type { ReactNode } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Circle, Path, Polygon } from "react-native-svg";
 import { colors } from "@raven/shared";
 
@@ -28,6 +29,32 @@ export function LocationPin({ size = 16, color = colors.inkSoft }: { size?: numb
       />
       <Circle cx={12} cy={9.5} r={2.4} stroke={color} strokeWidth={1.8} />
     </Svg>
+  );
+}
+
+/** A button's contents, swapped for a spinner while it works. The label
+ *  stays laid out but hidden, so the button keeps its exact size.
+ *  `style` lays out the label (e.g. an icon beside text). */
+export function Busy({
+  pending,
+  color = "#fff",
+  style,
+  children,
+}: {
+  pending: boolean;
+  color?: string;
+  style?: StyleProp<ViewStyle>;
+  children: ReactNode;
+}) {
+  return (
+    <View>
+      <View style={[style, pending && styles.hidden]}>{children}</View>
+      {pending ? (
+        <View style={styles.spinner} accessibilityLabel="Working">
+          <ActivityIndicator size="small" color={color} />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -64,6 +91,8 @@ export function Pill({
 }
 
 const styles = StyleSheet.create({
+  hidden: { opacity: 0 },
+  spinner: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center" },
   pill: {
     borderWidth: 1,
     borderColor: colors.line,

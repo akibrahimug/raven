@@ -18,7 +18,7 @@ import {
 import { answerFriendRequest, matchContacts, requestFriend } from "../lib/data";
 import { Avatar } from "../components/Avatar";
 import { Bone, Pulse } from "../components/Skeleton";
-import { displayText } from "../components/ui";
+import { displayText, Busy } from "../components/ui";
 
 const FIELDS = [ContactField.FULL_NAME, ContactField.PHONES] as const;
 const E164 = /^\+[1-9]\d{6,14}$/;
@@ -312,9 +312,9 @@ function StatusAction({
       disabled={busy}
       style={({ pressed }) => [styles.add, (pressed || busy) && { backgroundColor: colors.accentDeep }]}
     >
-      <Text style={styles.addLabel}>
-        {busy ? "…" : status === "asked_you" ? "Accept" : "Add"}
-      </Text>
+      <Busy pending={busy}>
+        <Text style={styles.addLabel}>{status === "asked_you" ? "Accept" : "Add"}</Text>
+      </Busy>
     </Pressable>
   );
 }

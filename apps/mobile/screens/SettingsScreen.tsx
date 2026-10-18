@@ -13,9 +13,8 @@ import { supabase } from "../lib/supabase";
 import { setDiscoverable } from "../lib/data";
 import { pickPhoto, uploadPhotoBase64 } from "../lib/media";
 import { getHapticsEnabled, setHapticsEnabled } from "../lib/prefs";
-import { unregisterPushToken } from "../lib/push";
 import { Avatar } from "../components/Avatar";
-import { displayText } from "../components/ui";
+import { displayText, Busy } from "../components/ui";
 import { DeleteAccountLink } from "../components/DeleteAccountLink";
 
 export function SettingsScreen({
@@ -23,12 +22,15 @@ export function SettingsScreen({
   onBack,
   onProfileChanged,
   onDeleted,
+  onSignOut,
 }: {
   profile: Profile;
   onBack: () => void;
   onProfileChanged: () => void;
   /** The account is gone — App.tsx signs this device out. */
   onDeleted: () => void;
+  /** App leaves for the sign-in screen at once and finishes in the background. */
+  onSignOut: () => void;
 }) {
   const [name, setName] = useState(profile.display_name);
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
@@ -94,7 +96,9 @@ export function SettingsScreen({
         <Pressable onPress={changePhoto} disabled={uploading} style={styles.avatarButton}>
           <Avatar profile={{ display_name: profile.display_name, avatar_url: avatarUrl, points: profile.points }} size={64} />
           <View style={styles.avatarBadge}>
-            <Text style={styles.avatarBadgeLabel}>{uploading ? "…" : "Edit"}</Text>
+            <Busy pending={uploading}>
+              <Text style={styles.avatarBadgeLabel}>Edit</Text>
+            </Busy>
           </View>
         </Pressable>
         <View style={styles.cardText}>
@@ -165,10 +169,7 @@ export function SettingsScreen({
       </View>
 
       <Pressable
-        onPress={async () => {
-          await unregisterPushToken(); // this device stops buzzing for this account
-          supabase.auth.signOut();
-        }}
+        onPress={onSignOut}
         style={styles.signOut}
       >
         <Text style={styles.signOutLabel}>Sign out</Text>

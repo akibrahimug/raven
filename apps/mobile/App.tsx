@@ -9,7 +9,7 @@ import { supabase } from "./lib/supabase";
 import { fetchActiveFriendRavens, fetchFriendRequests, fetchFriends, fetchProfile } from "./lib/data";
 import { inviteUrlFor } from "./lib/invite";
 import { buzzArrival, loadPrefs } from "./lib/prefs";
-import { onNotificationTap, registerPushToken } from "./lib/push";
+import { onNotificationTap, registerPushToken, unregisterPushToken } from "./lib/push";
 import { Plane, displayText } from "./components/ui";
 import { RavenListSkeleton } from "./components/Skeleton";
 import { Avatar } from "./components/Avatar";
@@ -186,6 +186,21 @@ function Root() {
     setAuthScreen({ name: "signup", notice: "deleted" });
   }
 
+  // Straight to the sign-in screen. supabase.auth.signOut() asks the server
+  // to revoke the session before it lets go of it locally, and that's slow
+  // on this backend — the person shouldn't wait for it. The session is still
+  // held meanwhile, which unregistering this device's push token needs.
+  function handleSignOut() {
+    setSession(null);
+    setProfile(null);
+    setProfileFor(null);
+    setRoute({ name: "inbox" });
+    setAuthScreen({ name: "signup" });
+    unregisterPushToken() // this device stops buzzing for this account
+      .catch(() => {})
+      .finally(() => supabase.auth.signOut());
+  }
+
   let screen: React.ReactNode;
   if (!session || !userId) {
     screen =
@@ -289,6 +304,7 @@ function Root() {
         onBack={() => setRoute({ name: "inbox" })}
         onProfileChanged={() => setRefreshKey((k) => k + 1)}
         onDeleted={handleDeleted}
+        onSignOut={handleSignOut}
       />
     );
   } else {

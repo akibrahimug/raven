@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
 import { colors } from "@raven/shared";
 import { deleteAccount } from "../lib/data";
+import { Busy } from "./ui";
 
 /** "Delete account", for Settings and for the sign-up steps before it (a
  *  sign-up abandoned at the phone or name step can't reach Settings). It
@@ -47,7 +48,9 @@ export function DeleteAccountLink({
   return (
     <>
       <Pressable onPress={confirm} disabled={deleting} style={style}>
-        <Text style={styles.label}>{deleting ? "Deleting…" : "Delete account"}</Text>
+        <Busy pending={deleting} color={colors.inkFaint}>
+          <Text style={styles.label}>Delete account</Text>
+        </Busy>
       </Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </>

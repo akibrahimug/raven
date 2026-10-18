@@ -13,7 +13,7 @@ import * as Linking from "expo-linking";
 import Svg, { Path } from "react-native-svg";
 import { AUTH_NOTICES, colors, friendlyError, type AuthNotice } from "@raven/shared";
 import { supabase } from "../lib/supabase";
-import { Plane, displayText } from "../components/ui";
+import { Plane, displayText, Busy } from "../components/ui";
 
 const REDIRECT_URL = Linking.createURL("auth/callback");
 
@@ -122,8 +122,10 @@ export function SignupScreen({
             pressed && { opacity: 0.85 },
           ]}
         >
-          <GoogleIcon />
-          <Text style={styles.googleLabel}>Continue with Google</Text>
+          <Busy pending={busyGoogle} color={colors.ink} style={styles.googleInner}>
+            <GoogleIcon />
+            <Text style={styles.googleLabel}>Continue with Google</Text>
+          </Busy>
         </Pressable>
 
         <View style={styles.dividerRow}>
@@ -160,7 +162,9 @@ export function SignupScreen({
                 pressed && { backgroundColor: colors.accentDeep },
               ]}
             >
-              <Text style={styles.buttonLabel}>{busyEmail ? "Sending…" : "Continue with email"}</Text>
+              <Busy pending={busyEmail}>
+                <Text style={styles.buttonLabel}>Continue with email</Text>
+              </Busy>
             </Pressable>
           </>
         )}
@@ -186,6 +190,7 @@ const styles = StyleSheet.create({
   wordmark: { fontSize: 42, marginTop: 8 },
   tagline: { fontSize: 16, color: colors.inkSoft },
   form: { marginTop: 44, gap: 10 },
+  googleInner: { flexDirection: "row", alignItems: "center", gap: 10 },
   googleButton: {
     flexDirection: "row",
     alignItems: "center",

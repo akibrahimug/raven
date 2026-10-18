@@ -10,7 +10,7 @@ import {
   type RequestPerson,
 } from "../lib/data";
 import { Avatar } from "../components/Avatar";
-import { displayText } from "../components/ui";
+import { displayText, Busy } from "../components/ui";
 import { FriendRowsSkeleton } from "../components/Skeleton";
 
 export function FriendsScreen({
@@ -110,7 +110,9 @@ export function FriendsScreen({
                   disabled={busy === person.id}
                   style={({ pressed }) => [styles.accept, pressed && { backgroundColor: colors.accentDeep }]}
                 >
-                  <Text style={styles.acceptLabel}>{busy === person.id ? "…" : "Accept"}</Text>
+                  <Busy pending={busy === person.id}>
+                    <Text style={styles.acceptLabel}>Accept</Text>
+                  </Busy>
                 </Pressable>
               </View>
             ))}
@@ -161,7 +163,9 @@ export function FriendsScreen({
                   disabled={busy === person.id}
                   hitSlop={6}
                 >
-                  <Text style={styles.muted}>{busy === person.id ? "Taking back…" : "Take back"}</Text>
+                  <Busy pending={busy === person.id} color={colors.inkFaint}>
+                    <Text style={styles.muted}>Take back</Text>
+                  </Busy>
                 </Pressable>
               </View>
             ))}
