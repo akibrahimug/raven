@@ -6,7 +6,7 @@ import * as Linking from "expo-linking";
 import type { Session } from "@supabase/supabase-js";
 import { colors, type AuthNotice, type Profile } from "@raven/shared";
 import { supabase } from "./lib/supabase";
-import { fetchFriendRequests, fetchFriends, fetchProfile } from "./lib/data";
+import { fetchActiveFriendRavens, fetchFriendRequests, fetchFriends, fetchProfile } from "./lib/data";
 import { inviteUrlFor } from "./lib/invite";
 import { buzzArrival, loadPrefs } from "./lib/prefs";
 import { onNotificationTap, registerPushToken } from "./lib/push";
@@ -56,6 +56,8 @@ function Root() {
   const [friendCount, setFriendCount] = useState(0);
   // People asking to be friends — a dot on Friends until they're answered.
   const [askingCount, setAskingCount] = useState(0);
+  // Friends with a raven out — the same dot, until those ravens expire.
+  const [flyingCount, setFlyingCount] = useState(0);
   const [route, setRoute] = useState<Route>({ name: "inbox" });
   const [refreshKey, setRefreshKey] = useState(0);
   const [authScreen, setAuthScreen] = useState<AuthScreen>({ name: "signup" });
@@ -122,6 +124,9 @@ function Root() {
       .catch(() => {});
     fetchFriendRequests()
       .then((requests) => setAskingCount(requests.incoming.length))
+      .catch(() => {});
+    fetchActiveFriendRavens(userId)
+      .then((ravens) => setFlyingCount(ravens.size))
       .catch(() => {});
   }, [userId, refreshKey]);
 
@@ -254,7 +259,9 @@ function Root() {
       <FriendsScreen
         userId={userId}
         inviteUrl={inviteUrlFor(profile.invite_code)}
+        refreshKey={refreshKey}
         onBack={() => setRoute({ name: "inbox" })}
+        onOpenRaven={(id) => setRoute({ name: "raven", id })}
         onFindContacts={() => setRoute({ name: "contacts" })}
         onChanged={() => setRefreshKey((k) => k + 1)}
       />
@@ -291,7 +298,17 @@ function Root() {
             </Pressable>
             <Pressable onPress={() => setRoute({ name: "friends" })} hitSlop={8}>
               <Text style={styles.navLink}>Friends</Text>
-              {askingCount > 0 ? <View style={styles.dot} accessibilityLabel={`${askingCount} asking to be friends`} /> : null}
+              {askingCount > 0 || flyingCount > 0 ? (
+                <View
+                  style={styles.dot}
+                  accessibilityLabel={[
+                    askingCount > 0 ? `${askingCount} asking to be friends` : null,
+                    flyingCount > 0 ? `${flyingCount} with a raven out` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                />
+              ) : null}
             </Pressable>
             <Pressable onPress={() => setRoute({ name: "settings" })} hitSlop={8}>
               <Avatar profile={profile} size={32} />

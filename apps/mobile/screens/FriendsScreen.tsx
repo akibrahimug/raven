@@ -3,6 +3,7 @@ import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-nati
 import { colors, inviteMessage, levelForPoints, type Profile } from "@raven/shared";
 import {
   answerFriendRequest,
+  fetchActiveFriendRavens,
   fetchFriendRequests,
   fetchFriends,
   withdrawFriendRequest,
@@ -15,13 +16,19 @@ import { FriendRowsSkeleton } from "../components/Skeleton";
 export function FriendsScreen({
   userId,
   inviteUrl,
+  refreshKey,
   onBack,
+  onOpenRaven,
   onFindContacts,
   onChanged,
 }: {
   userId: string;
   inviteUrl: string;
+  /** Bumped by App's realtime listener — a friend's raven came or went. */
+  refreshKey: number;
   onBack: () => void;
+  /** Tapping a friend with a raven out opens it. */
+  onOpenRaven: (ravenId: string) => void;
   onFindContacts: () => void;
   /** A request was answered or taken back — App refreshes its counts. */
   onChanged: () => void;
@@ -32,6 +39,8 @@ export function FriendsScreen({
     incoming: [],
     outgoing: [],
   });
+  // Friend id → their newest raven still flying.
+  const [flying, setFlying] = useState<Map<string, string>>(new Map());
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,11 +51,15 @@ export function FriendsScreen({
     fetchFriendRequests()
       .then(setRequests)
       .catch(() => {});
+    // No dots is a fine fallback — never a reason to lose the list.
+    fetchActiveFriendRavens(userId)
+      .then(setFlying)
+      .catch(() => {});
   }, [userId]);
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   async function act(personId: string, action: () => Promise<void>) {
     setBusy(personId);
@@ -165,15 +178,30 @@ export function FriendsScreen({
         <View style={styles.list}>
           {friends.map((friend, index) => {
             const level = levelForPoints(friend.points);
+            const ravenId = flying.get(friend.id);
             return (
-              <View
+              <Pressable
                 key={friend.id}
-                style={[styles.row, index < friends.length - 1 && styles.rowBorder]}
+                onPress={ravenId ? () => onOpenRaven(ravenId) : undefined}
+                disabled={!ravenId}
+                accessibilityRole={ravenId ? "button" : undefined}
+                accessibilityLabel={ravenId ? `${friend.display_name}, has a raven out` : undefined}
+                style={({ pressed }) => [
+                  styles.row,
+                  index < friends.length - 1 && styles.rowBorder,
+                  pressed && { backgroundColor: colors.paperSunken },
+                ]}
               >
-                <Avatar profile={friend} size={34} />
-                <Text style={styles.rowLabel}>{friend.display_name}</Text>
+                <View>
+                  <Avatar profile={friend} size={34} />
+                  {ravenId ? <View style={styles.avatarDot} /> : null}
+                </View>
+                <View>
+                  <Text style={styles.rowLabel}>{friend.display_name}</Text>
+                  {ravenId ? <Text style={styles.flying}>Has a raven out</Text> : null}
+                </View>
                 <Text style={[styles.rowLevel, { color: level.color }]}>{level.name}</Text>
-              </View>
+              </Pressable>
             );
           })}
         </View>
@@ -239,6 +267,18 @@ const styles = StyleSheet.create({
   rowBorder: { borderBottomWidth: 1, borderBottomColor: colors.line },
   rowLabel: { fontSize: 15, fontWeight: "600", color: colors.ink },
   rowGrow: { flex: 1 },
+  avatarDot: {
+    position: "absolute",
+    top: -1,
+    right: -1,
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: colors.accent,
+    borderWidth: 2,
+    borderColor: colors.paperRaised,
+  },
+  flying: { fontSize: 12, color: colors.accent },
   rowLevel: { marginLeft: "auto", fontSize: 12, fontWeight: "700" },
   accept: { backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   acceptLabel: { color: "#fff", fontSize: 13, fontWeight: "700" },

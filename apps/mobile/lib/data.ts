@@ -83,6 +83,25 @@ export async function fetchFriends(userId: string): Promise<Profile[]> {
     .sort((x, y) => x.display_name.localeCompare(y.display_name));
 }
 
+/** Friends with a raven out right now, each mapped to their newest one.
+ *  RLS only shows ravens you sent or were sent, and a recalled raven is
+ *  deleted outright — so "someone else's, not yet expired" is exactly the
+ *  friends' ravens still flying to you. */
+export async function fetchActiveFriendRavens(userId: string): Promise<Map<string, string>> {
+  const { data, error } = await supabase
+    .from("ravens")
+    .select("id, sender_id")
+    .neq("sender_id", userId)
+    .gt("expires_at", new Date().toISOString())
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(friendlyError(error));
+  const newest = new Map<string, string>();
+  for (const raven of data ?? []) {
+    if (!newest.has(raven.sender_id)) newest.set(raven.sender_id, raven.id);
+  }
+  return newest;
+}
+
 export async function rsvp(ravenId: string, userId: string, status: Exclude<RsvpStatus, "pending">) {
   const { error } = await supabase
     .from("raven_recipients")
