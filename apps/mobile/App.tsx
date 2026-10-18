@@ -148,7 +148,14 @@ function Root() {
   // bump-and-refetch round-trip.
   useEffect(() => {
     if (!userId) return;
-    const bump = () => setRefreshKey((k) => k + 1);
+    // One change usually arrives as several events (a new raven is a ravens
+    // insert plus a raven_recipients insert per person) — refetch once for
+    // the lot, not once per event.
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const bump = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => setRefreshKey((k) => k + 1), 150);
+    };
     const channel = supabase
       .channel("raven-mobile")
       .on("postgres_changes", { event: "*", schema: "public", table: "ravens" }, bump)
@@ -161,6 +168,7 @@ function Root() {
       })
       .subscribe();
     return () => {
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(channel);
     };
   }, [userId]);
